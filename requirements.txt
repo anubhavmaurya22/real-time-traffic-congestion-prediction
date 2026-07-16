@@ -12,10 +12,11 @@
 #        documented PyG install path and should work normally on your machine or Colab.)
 #   pip install -r requirements.txt
 
-torch-geometric
-torch-geometric-temporal
-fastapi
-uvicorn
-networkx
-pandas
-numpy
+torch 2.13.0                 → released 2026-07-08
+numpy 2.4.6                 → released 2026-07-04
+pandas 3.0.3                 → released 2026-05-11
+fastapi 0.139.0               → released 2026-07-01
+uvicorn 0.51.0                → released 2026-07-08
+networkx 3.6.1                → released 2025-12-08
+torch-geometric 2.8.0         → released 2026-06-05
+torch-geometric-temporal 0.56.2 → released 2026-07-16 (today)
