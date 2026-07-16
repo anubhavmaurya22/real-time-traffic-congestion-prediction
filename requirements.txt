@@ -1,37 +1,21 @@
-# ─── Core ML / DL ────────────────────────────────────────────────────────────
-torch==2.3.0
-torch-geometric==2.5.3
-torch-geometric-temporal==0.54.0
+# Verified installable on Python 3.12 (2026-07-15).
+# Install in this order:
+#
+#   pip install torch
+#   python -c "import torch; print(torch.__version__)"   # note the version it prints
+#   pip install torch-scatter torch-sparse -f https://data.pyg.org/whl/torch-<VERSION>.html
+#       (replace <VERSION> with what you saw above, e.g. 2.13.0+cpu or 2.13.0+cu121 —
+#        this pulls prebuilt wheels; installing these two from PyPI directly tries to
+#        compile from source and can hang for a very long time. This is the one step
+#        that could not be verified in the build sandbox this project was scaffolded
+#        in — box.com and data.pyg.org aren't reachable from it — but it's the standard,
+#        documented PyG install path and should work normally on your machine or Colab.)
+#   pip install -r requirements.txt
 
-# ─── Data & Science ───────────────────────────────────────────────────────────
-numpy==1.26.4
-pandas==2.2.2
-scikit-learn==1.5.0
-scipy==1.13.0
-
-# ─── Graph & Routing ──────────────────────────────────────────────────────────
-networkx==3.3
-
-# ─── API ──────────────────────────────────────────────────────────────────────
-fastapi==0.111.0
-uvicorn[standard]==0.30.1
-pydantic==2.7.3
-
-# ─── Database ─────────────────────────────────────────────────────────────────
-# SQLite ships with Python — no install needed for the logging step
-
-# ─── Visualization / Frontend ─────────────────────────────────────────────────
-plotly==5.22.0
-matplotlib==3.9.0
-
-# ─── Utilities ────────────────────────────────────────────────────────────────
-python-dotenv==1.0.1
-pyyaml==6.0.1
-loguru==0.7.2
-tqdm==4.66.4
-joblib==1.4.2
-requests==2.32.2
-
-# ─── Dev / Testing ────────────────────────────────────────────────────────────
-pytest==8.2.2
-httpx==0.27.0        # for FastAPI test client
+torch-geometric
+torch-geometric-temporal
+fastapi
+uvicorn
+networkx
+pandas
+numpy

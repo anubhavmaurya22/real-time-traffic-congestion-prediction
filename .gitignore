@@ -1,27 +1,11 @@
+traffic_env/
 __pycache__/
-*.py[cod]
-*.pyo
-.env
-venv/
-.venv/
-MyProject/venv/
-*.egg-info/
-dist/
-build/
-.DS_Store
-Thumbs.db
-*.log
-
-# Model checkpoints (keep best_model.pt in git only if small)
-model/saved/*.pt
-model/saved/*.pkl
-
-# Data (track only small CSVs, not raw tensors)
+*.pyc
+.ipynb_checkpoints/
 data/raw/
-data/processed/*.pt
-data/processed/*.npy
-
-# IDE
-.vscode/
-.idea/
-*.swp
+data/*.zip
+data/*.h5
+*.pt
+*.ckpt
+.env
+.DS_Store
