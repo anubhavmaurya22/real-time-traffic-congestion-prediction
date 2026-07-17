@@ -9,3 +9,4 @@ data/*.h5
 *.ckpt
 .env
 .DS_Store
+venv/
