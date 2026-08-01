@@ -15,6 +15,7 @@ from torch_geometric_temporal.nn.recurrent import A3TGCN
 
 print(f"torch {torch.__version__}")
 
+
 # Downloads METR-LA on first run (~few minutes), caches locally after that.
 loader = METRLADatasetLoader()
 dataset = loader.get_dataset(num_timesteps_in=12, num_timesteps_out=12)
