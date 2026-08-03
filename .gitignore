@@ -1,4 +1,6 @@
 traffic_env/
+venv_new/
+model/data/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
