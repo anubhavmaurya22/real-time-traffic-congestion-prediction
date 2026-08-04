@@ -12,11 +12,12 @@
 #        documented PyG install path and should work normally on your machine or Colab.)
 #   pip install -r requirements.txt
 
-torch 2.13.0                 
-numpy 2.4.6                 
-pandas 3.0.3                 
-fastapi 0.139.0               
-uvicorn 0.51.0                
-networkx 3.6.1                
-torch-geometric 2.8.0         
-torch-geometric-temporal 0.56.2 
+torch==2.13.0
+numpy==2.4.6
+pandas==3.0.3
+fastapi==0.139.0
+uvicorn==0.51.0
+networkx==3.6.1
+pydantic==2.11.5
+torch-geometric==2.8.0
+torch-geometric-temporal==0.56.2
