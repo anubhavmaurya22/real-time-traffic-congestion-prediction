@@ -17,3 +17,22 @@ venv/
 *.npy
 api/data/
 
+# Downloaded/generated data -- large, reproducible, shouldn't be in git
+**/data/METR-LA.zip
+**/data/node_values.npy
+**/data/adj_mat.npy
+data/
+
+# Model checkpoints
+*.pt
+*.pth
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+venv_new/
+
+# IDE
+.vscode/
