@@ -12,3 +12,8 @@ data/*.h5
 .env
 .DS_Store
 venv/
+
+# Large data files (exceed GitHub's 100 MB limit)
+*.npy
+api/data/
+
