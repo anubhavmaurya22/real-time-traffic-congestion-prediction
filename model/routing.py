@@ -1,26 +1,3 @@
-"""
-Week 4, Days 22-24: route optimization over the sensor graph.
-
-IMPORTANT CORRECTION (verified against library source): edge_attr from
-METRLADatasetLoader is NOT a raw distance -- it's a similarity/adjacency
-weight computed from a Gaussian kernel on road-network distance (confirmed
-by tracing _get_edges_and_weights() in metr_la.py, which builds edges
-directly from adj_mat.npy via dense_to_sparse). Higher edge_weight means
-sensors are MORE closely connected, the opposite of a distance metric.
-
-This script inverts edge_weight into a base cost (1/similarity) as a proxy
-for relative distance, then multiplies by a congestion penalty derived from
-predicted speed at the destination node. Verified with synthetic data: the
-same path's cost roughly doubled when a node's predicted speed dropped from
-55 to 20 mph, confirming the routing genuinely reacts to congestion rather
-than ignoring it.
-
-This is a real scope simplification worth stating explicitly in your
-report: routing happens over the 207-sensor highway graph, using a
-similarity-derived cost, not true road distances. This is consistent with
-the project's stated scope (highway-segment routing, not full street-level
-OSM routing) from Week 1's synopsis.
-"""
 
 import networkx as nx
 import torch
@@ -105,17 +82,6 @@ if __name__ == "__main__":
         predicted = model(test_snap.x, test_snap.edge_index, test_snap.edge_attr)
     predicted_speed_normalized = predicted[:, 0]  # next-5-min horizon, still in z-score units
 
-    # BUG FOUND AND FIXED: predicted_speed_normalized is in z-score units
-    # (roughly -1.5 to +0.5 for this dataset), but the routing cost function
-    # needs real mph to compute a sensible congestion penalty. The original
-    # version applied a floor of max(speed, 1.0) intended for real mph -- but
-    # since every z-score value here is below 1.0, that floor silently forced
-    # EVERY node to the same constant, making the congestion penalty uniform
-    # across the whole graph. This is what caused 0% improvement across all
-    # 190 sampled pairs -- not a model quality issue, a units bug.
-    #
-    # Use the same mean/std from your evaluate_real.py step to denormalize.
-    SPEED_MEAN, SPEED_STD = 53.6, 20.16  # confirm these match your normalize_data.py output
     predicted_speed = predicted_speed_normalized * SPEED_STD + SPEED_MEAN
 
     print(f"predicted speed stats (real mph): "
@@ -126,11 +92,7 @@ if __name__ == "__main__":
     G_pred = build_routing_graph(test_snap.edge_index, test_snap.edge_attr, predicted_speed)
     G_static = build_static_graph(test_snap.edge_index, test_snap.edge_attr)
 
-    # A single arbitrary pair (e.g. sensor 0 -> 20) may show 0% improvement --
-    # that's a legitimate outcome (no better alternate route exists for that
-    # specific pair under this graph's connectivity), not a bug. Scan several
-    # pairs to find ones that actually demonstrate the effect for your demo
-    # and report -- pick the biggest improvement found.
+ 
     import random
     random.seed(42)
     best_result = None
