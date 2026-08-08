@@ -56,3 +56,7 @@ ui-debug.log
 # Frontend — duplicated assets (canonical copy lives in data/)
 # =============================================================
 frontend/bangalore_road_locations.csv
+# AWS key pair
+*.pem
+streeflow-key.pem
+deploy/streetflow-key.pem

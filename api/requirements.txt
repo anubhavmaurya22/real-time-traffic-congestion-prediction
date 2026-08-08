@@ -1,0 +1,23 @@
+# Verified installable on Python 3.12 (2026-07-15).
+# Install in this order:
+#
+#   pip install torch
+#   python -c "import torch; print(torch.__version__)"   # note the version it prints
+#   pip install torch-scatter torch-sparse -f https://data.pyg.org/whl/torch-<VERSION>.html
+#       (replace <VERSION> with what you saw above, e.g. 2.13.0+cpu or 2.13.0+cu121 —
+#        this pulls prebuilt wheels; installing these two from PyPI directly tries to
+#        compile from source and can hang for a very long time. This is the one step
+#        that could not be verified in the build sandbox this project was scaffolded
+#        in — box.com and data.pyg.org aren't reachable from it — but it's the standard,
+#        documented PyG install path and should work normally on your machine or Colab.)
+#   pip install -r requirements.txt
+
+torch==2.13.0
+numpy==2.4.6
+pandas==3.0.3
+fastapi==0.139.0
+uvicorn==0.51.0
+networkx==3.6.1
+pydantic==2.11.5
+torch-geometric==2.8.0
+torch-geometric-temporal==0.56.2
