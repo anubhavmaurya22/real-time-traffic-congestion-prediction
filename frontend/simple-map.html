@@ -3,20 +3,57 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Simple Map &mdash; STREETFLOW LIVE</title>
+  <title>Sensor Grid &mdash; STREETFLOW LIVE</title>
+  <meta name="description" content="Bangalore traffic sensor grid with real-time AI-predicted speed visualization."/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"><\/script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="theme.css"/>
   <style>
-    /* No tile filter — plain default OSM appearance */
-    .map-outer { flex: 1; padding: 16px; display: flex; overflow: hidden; }
-    .map-frame {
-      flex: 1; border-radius: 4px; overflow: hidden;
-      border: 1px solid var(--outline-var);
+    .map-outer { flex: 1; padding: 16px; display: flex; gap: 12px; overflow: hidden; }
+    .sensor-sidebar {
+      width: 260px; flex-shrink: 0;
+      display: flex; flex-direction: column; gap: 10px;
+      overflow-y: auto;
     }
+    .sensor-sidebar::-webkit-scrollbar { width: 3px; }
+    .sensor-sidebar::-webkit-scrollbar-thumb { background: var(--outline-var); }
+    .map-frame { flex: 1; border-radius: 4px; overflow: hidden; border: 1px solid var(--outline-var); }
     #simple-map { width: 100%; height: 100%; }
+    /* Sensor speed table */
+    .speed-table { display: flex; flex-direction: column; gap: 4px; }
+    .speed-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 10px; border-radius: 2px;
+      background: var(--surface-container); border: 1px solid var(--outline-var);
+      transition: border-color .15s;
+    }
+    .speed-row:hover { border-color: var(--primary); }
+    .speed-row-name { font-family: var(--font-mono); font-size: 10px; letter-spacing: .04em; color: var(--on-surface-var); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+    .speed-pill {
+      font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+      letter-spacing: .04em; padding: 2px 7px; border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .speed-pill.fast   { background: rgba(34,197,94,.15); color: #22c55e; }
+    .speed-pill.mod    { background: rgba(234,179,8,.15); color: #eab308; }
+    .speed-pill.slow   { background: rgba(239,68,68,.15);  color: #ef4444; }
+    /* Legend */
+    .legend-row { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; color: var(--on-surface-var); }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    /* Refresh badge */
+    .refresh-row { display: flex; align-items: center; justify-content: space-between; }
+    .refresh-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; color: var(--outline); }
+    .refresh-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%{transform:scale(.95);box-shadow:0 0 0 0 rgba(242,202,80,.7);} 70%{transform:scale(1);box-shadow:0 0 0 5px rgba(242,202,80,0);} 100%{transform:scale(.95);box-shadow:0 0 0 0 rgba(242,202,80,0);} }
+    /* Leaflet popup */
+    .leaflet-popup-content-wrapper { background: var(--surface-low) !important; border: 1px solid var(--outline-var) !important; border-radius: 4px !important; color: var(--on-surface) !important; font-family: 'JetBrains Mono', monospace !important; font-size: 11px !important; box-shadow: 0 4px 24px rgba(0,0,0,.6) !important; }
+    .leaflet-popup-tip { background: var(--surface-low) !important; }
+    .leaflet-popup-close-button { color: var(--on-surface-var) !important; }
+    /* OSM tiles — dark invert */
+    .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.75) contrast(1.15); }
+    .leaflet-container { background: var(--surface); }
   </style>
 </head>
 <body>
@@ -57,6 +94,38 @@
     </aside>
     <main class="no-pad">
       <div class="map-outer">
+        <!-- Sensor info sidebar -->
+        <div class="sensor-sidebar">
+          <!-- Status -->
+          <div class="glass-card" style="padding:14px;">
+            <span class="card-tag" style="margin-bottom:8px;">Grid Status</span>
+            <div class="refresh-row" style="margin-bottom:6px;">
+              <span class="refresh-label" id="refreshLabel">Initialising…</span>
+              <div class="refresh-dot" id="refreshDot" style="background:var(--outline);"></div>
+            </div>
+            <div style="font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;color:var(--outline);" id="lastRefresh">—</div>
+          </div>
+
+          <!-- Legend -->
+          <div class="glass-card" style="padding:14px;">
+            <span class="card-tag" style="margin-bottom:8px;">Speed Legend</span>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div class="legend-row"><div class="legend-dot" style="background:#22c55e;"></div>Fast (&gt;80 km/h)</div>
+              <div class="legend-row"><div class="legend-dot" style="background:#eab308;"></div>Moderate (48–80 km/h)</div>
+              <div class="legend-row"><div class="legend-dot" style="background:#ef4444;"></div>Congested (&lt;48 km/h)</div>
+            </div>
+          </div>
+
+          <!-- Sensor speed table -->
+          <div class="glass-card" style="padding:14px;flex:1;">
+            <span class="card-tag" style="margin-bottom:8px;">Sensor Speeds</span>
+            <div class="speed-table" id="speedTable">
+              <div style="font-family:var(--font-mono);font-size:10px;color:var(--outline);letter-spacing:.04em;">Loading API…</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Map -->
         <div class="map-frame">
           <div id="simple-map"></div>
         </div>
@@ -65,38 +134,128 @@
   </div>
 </div>
 <script>
-  // Plain Leaflet map — default OpenStreetMap tiles, no dark theme, no tile filter.
-  // Loads all 16 Bangalore road locations from bangalore_road_locations.csv
-  // CSV columns (per spec): index, road_name, area_name, latitude, longitude, source
-  var smap = L.map('simple-map').setView([12.97, 77.64], 12);
+  const API_BASE = "http://127.0.0.1:8000";
 
+  // Dark-themed Leaflet map
+  var smap = L.map('simple-map').setView([12.97, 77.64], 12);
+  L.control.zoom({ position: 'bottomright' }).addTo(smap);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 19
   }).addTo(smap);
 
-  // Load CSV, place default Leaflet markers, popup = road_name + area_name
+  var sensorLocations = [];
+  var circleMarkers   = [];
+
+  function speedColor(kmh) {
+    if (kmh > 80) return '#22c55e';
+    if (kmh > 48) return '#eab308';
+    return '#ef4444';
+  }
+
+  function speedClass(kmh) {
+    if (kmh > 80) return 'fast';
+    if (kmh > 48) return 'mod';
+    return 'slow';
+  }
+
+  // Load CSV
   fetch('bangalore_road_locations.csv')
     .then(function(r) { return r.text(); })
     .then(function(text) {
-      var lines = text.trim().split('\n').slice(1); // skip header row
+      var lines = text.trim().split('\n').slice(1);
       lines.forEach(function(line) {
-        // Split into at most 6 parts so the 'source' column (which contains
-        // commas like "approximated (parent area: X)") doesn't shift columns.
         var p         = line.split(',', 6);
+        var idx       = parseInt(p[0], 10);
         var road_name = (p[1] || '').trim();
         var area_name = (p[2] || '').trim();
         var lat       = parseFloat(p[3]);
         var lng       = parseFloat(p[4]);
         if (isNaN(lat) || isNaN(lng)) return;
-        L.marker([lat, lng])
-          .addTo(smap)
-          .bindPopup('<strong>' + road_name + '</strong><br/>' + area_name);
+        sensorLocations.push({ index: idx, road_name: road_name, area_name: area_name, lat: lat, lng: lng });
       });
+      // Initial placeholder circles
+      sensorLocations.forEach(function(s) {
+        var m = L.circleMarker([s.lat, s.lng], {
+          radius: 7, color: '#99907c', fillColor: '#99907c',
+          fillOpacity: 0.5, weight: 1.5
+        }).addTo(smap);
+        m.bindPopup('<strong style="color:#f2ca50;">' + s.road_name + '</strong><br/>' + s.area_name + '<br/><em style="color:var(--outline)">Loading speed…</em>');
+        circleMarkers.push({ sensor: s, marker: m });
+      });
+      fetchAndUpdate();
     })
     .catch(function(err) {
-      console.error('[SIMPLE MAP] Could not load bangalore_road_locations.csv:', err);
+      console.error('[SENSOR GRID] CSV load failed:', err);
+      setStatus('CSV load failed', false);
     });
-<\/script>
+
+  function setStatus(msg, live) {
+    document.getElementById('refreshLabel').textContent = msg;
+    document.getElementById('refreshDot').style.background = live ? 'var(--primary)' : 'var(--outline)';
+  }
+
+  function fetchAndUpdate() {
+    setStatus('Fetching predictions…', false);
+    fetch(API_BASE + '/predict', { method: 'POST' })
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function(data) {
+        var speeds = data.predicted_speeds_kmh;
+        if (!speeds) throw new Error('predicted_speeds_kmh missing from API response');
+
+        // Update markers
+        circleMarkers.forEach(function(entry) {
+          var kmh = speeds[entry.sensor.index];
+          if (kmh === undefined) return;
+          var col = speedColor(kmh);
+          entry.marker.setStyle({ color: col, fillColor: col, fillOpacity: 0.88, radius: 8 });
+          entry.marker.setPopupContent(
+            '<strong style="color:#f2ca50;font-family:JetBrains Mono,monospace;font-size:10px;letter-spacing:.08em;">SENSOR ' + entry.sensor.index + '</strong><br/>' +
+            '<span style="font-size:11px;">' + entry.sensor.road_name + '</span><br/>' +
+            '<span style="color:' + col + ';">&#9651; ' + kmh.toFixed(1) + ' km/h</span>'
+          );
+        });
+
+        // Update sidebar table
+        var tableEl = document.getElementById('speedTable');
+        tableEl.innerHTML = '';
+        sensorLocations.slice().sort(function(a,b){ return (speeds[a.index]||0) - (speeds[b.index]||0); }).forEach(function(s) {
+          var kmh = speeds[s.index];
+          if (kmh === undefined) return;
+          var row = document.createElement('div');
+          row.className = 'speed-row';
+          row.innerHTML =
+            '<span class="speed-row-name">' + s.road_name + '</span>' +
+            '<span class="speed-pill ' + speedClass(kmh) + '">' + kmh.toFixed(0) + ' km/h</span>';
+          row.addEventListener('click', function() {
+            smap.setView([s.lat, s.lng], 14);
+            var entry = circleMarkers.find(function(e){ return e.sensor.index === s.index; });
+            if (entry) entry.marker.openPopup();
+          });
+          tableEl.appendChild(row);
+        });
+
+        var now = new Date();
+        document.getElementById('lastRefresh').textContent =
+          'Last update: ' + now.toLocaleTimeString();
+        setStatus('16 sensors · live', true);
+      })
+      .catch(function(err) {
+        console.warn('[SENSOR GRID] API fetch failed:', err);
+        setStatus('API offline — showing placeholder', false);
+        document.getElementById('speedTable').innerHTML =
+          '<div style="font-family:var(--font-mono);font-size:10px;color:var(--error);letter-spacing:.04em;">API not reachable.<br/>Start: uvicorn api_bangalore:app --reload</div>';
+      });
+  }
+
+  // Prevent Command stub navigation
+  document.getElementById('sn-command').addEventListener('click', function(e){ e.preventDefault(); });
+
+  // Auto-refresh every 30 s
+  setInterval(fetchAndUpdate, 30000);
+</script>
 </body>
 </html>

@@ -263,9 +263,9 @@
         <div class="glass-card">
           <span class="card-tag" style="margin-bottom:10px;">Speed Legend</span>
           <div class="legend-card">
-            <div class="legend-row"><div class="legend-dot" style="background:#22c55e;"></div>Fast (&gt;50 mph)</div>
-            <div class="legend-row"><div class="legend-dot" style="background:#eab308;"></div>Moderate (30–50 mph)</div>
-            <div class="legend-row"><div class="legend-dot" style="background:#ef4444;"></div>Congested (&lt;30 mph)</div>
+            <div class="legend-row"><div class="legend-dot" style="background:#22c55e;"></div>Fast (&gt;80 km/h)</div>
+            <div class="legend-row"><div class="legend-dot" style="background:#eab308;"></div>Moderate (48–80 km/h)</div>
+            <div class="legend-row"><div class="legend-dot" style="background:#ef4444;"></div>Congested (&lt;48 km/h)</div>
             <div class="legend-row"><div class="legend-dot" style="background:#f2ca50;"></div>Predicted Route (gold)</div>
             <div class="legend-row"><div class="legend-dot" style="background:#99907c;border-radius:0;height:2px;width:14px;"></div>Static Route (dashed)</div>
           </div>
@@ -295,9 +295,9 @@
   let routeLine = null;
   let staticRouteLine = null;
 
-  function speedColor(mph) {
-    if (mph > 50) return '#22c55e';
-    if (mph > 30) return '#eab308';
+  function speedColor(kmh) {
+    if (kmh > 80) return '#22c55e';
+    if (kmh > 48) return '#eab308';
     return '#ef4444';
   }
 
@@ -437,23 +437,32 @@
     const res = await fetch(API_BASE + '/predict', { method: 'POST' });
     if (!res.ok) { setResult('Error loading predictions: ' + res.status, 'error'); return; }
     const data = await res.json();
-    const speeds = data.predicted_speeds_mph;
+    const speeds = data.predicted_speeds_kmh;
     sensorMarkers.forEach(m => map.removeLayer(m));
     sensorMarkers = [];
     sensorLocations.forEach(s => {
-      const mph = speeds[s.index];
-      if (mph === undefined) return;
+      const kmh = speeds[s.index];
+      if (kmh === undefined) return;
       const marker = L.circleMarker([s.latitude, s.longitude], {
-        radius: 6, color: speedColor(mph), fillColor: speedColor(mph),
+        radius: 7, color: speedColor(kmh), fillColor: speedColor(kmh),
         fillOpacity: 0.85, weight: 1.5,
       }).addTo(map);
       marker.bindPopup(
         '<strong style="color:#f2ca50;font-family:JetBrains Mono,monospace;font-size:10px;letter-spacing:.08em;">SENSOR ' + s.index + '</strong><br/>' +
         '<span style="font-size:11px;">' + s.sensor_id + '</span><br/>' +
-        '<span style="color:#f2ca50;">&#9651; ' + mph.toFixed(1) + ' mph</span>'
+        '<span style="color:#f2ca50;">&#9651; ' + kmh.toFixed(1) + ' km/h</span>'
       );
       sensorMarkers.push(marker);
     });
+  }
+
+  // Auto-refresh sensor speeds every 30 s
+  let _refreshTimer = null;
+  function startAutoRefresh() {
+    if (_refreshTimer) clearInterval(_refreshTimer);
+    _refreshTimer = setInterval(function() {
+      plotPredictedSpeeds();
+    }, 30000);
   }
 
   function setResult(text, state) {
@@ -525,6 +534,7 @@
       await loadSensorLocations();
       populateDropdowns();
       await plotPredictedSpeeds();
+      startAutoRefresh();
       setResult('Predictions loaded. Select source & target, then click Compute Route.', '');
     } catch(err) {
       setResult('Init failed: ' + err.message + '\nEnsure API is running and CSV is accessible.', 'error');

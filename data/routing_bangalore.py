@@ -100,7 +100,7 @@ if __name__ == "__main__":
 
     sample = next(iter(train_dataset))
     model = TrafficForecastModel(in_channels=sample.x.shape[1], in_periods=7, out_periods=3)
-    model.load_state_dict(torch.load("bangalore_best_model.pt"))
+    model.load_state_dict(torch.load("bangalore_best_model.pt", weights_only=True))
     model.eval()
 
     test_snap = next(iter(test_dataset))

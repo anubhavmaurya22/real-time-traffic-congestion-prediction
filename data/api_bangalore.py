@@ -11,6 +11,7 @@ Then visit http://127.0.0.1:8000/docs for interactive testing.
 """
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
 import torch
@@ -32,6 +33,21 @@ from routing_bangalore import build_routing_graph, build_static_graph, compare_r
 from model import TrafficForecastModel
 
 app = FastAPI(title="Bangalore Traffic Congestion Prediction & Route Optimization API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://traff2ic-detector.web.app",
+        "https://traff2ic-detector.firebaseapp.com",
+        "http://localhost:3000",
+        "http://127.0.0.1:5500",
+        "http://localhost:5500",
+        "null",
+    ],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+)
+
 state = {}
 
 
@@ -48,7 +64,12 @@ def load_resources():
 
     sample = next(iter(train_dataset))
     model = TrafficForecastModel(in_channels=sample.x.shape[1], in_periods=7, out_periods=3)
-    model.load_state_dict(torch.load(os.path.join(_MODEL_DIR, "bangalore_best_model.pt")))
+    model.load_state_dict(
+        torch.load(
+            os.path.join(_MODEL_DIR, "bangalore_best_model.pt"),
+            weights_only=True,
+        )
+    )
     model.eval()
 
     locations = pd.read_csv(os.path.join(_DATA_DIR, "bangalore_road_locations.csv"))
