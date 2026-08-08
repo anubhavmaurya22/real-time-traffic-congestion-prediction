@@ -1,0 +1,1 @@
+{"dataconnect": {"source": "dataconnect"}, "hosting": {"public": "frontend", "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]}}

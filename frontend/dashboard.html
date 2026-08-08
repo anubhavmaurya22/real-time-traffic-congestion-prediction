@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>STREETFLOW LIVE — Real-Time Traffic Congestion Prediction &amp; Route Optimization</title>
+  <meta name="description" content="Live traffic congestion prediction and dynamic route optimization for Bangalore using AI-powered transit intelligence."/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:#0e0e0e; --surface:#131313; --surface-low:#1c1b1b;
+      --surface-container:#201f1f; --surface-high:#2a2a2a;
+      --surface-highest:#353534; --surface-bright:#3a3939;
+      --primary:#f2ca50; --primary-container:#d4af37;
+      --on-surface:#e5e2e1; --on-surface-var:#d0c5af;
+      --on-primary:#3c2f00; --outline:#99907c; --outline-var:#4d4635;
+      --secondary:#c8c6c6; --error:#ffb4ab;
+      --font-mono:'JetBrains Mono',monospace; --font-sans:'Inter',sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{height:100%;overflow:hidden;background-color:var(--bg);color:var(--on-surface);font-family:var(--font-sans);font-size:16px;-webkit-font-smoothing:antialiased;}
+    ::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-track{background:var(--surface);} ::-webkit-scrollbar-thumb{background:var(--outline-var);border-radius:2px;}
+    #app{display:flex;flex-direction:column;height:100vh;}
+    header{position:fixed;top:0;left:0;right:0;z-index:100;height:64px;background:rgba(19,19,19,0.96);border-bottom:1px solid var(--outline-var);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:space-between;padding:0 40px;}
+    .header-left{display:flex;align-items:center;gap:32px;}
+    .brand{font-size:20px;font-weight:700;letter-spacing:-0.03em;color:var(--primary);text-transform:uppercase;}
+    .brand span{color:var(--on-surface-var);font-weight:400;}
+    nav.top-nav{display:flex;gap:4px;}
+    nav.top-nav a{font-family:var(--font-mono);font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--on-surface-var);text-decoration:none;padding:6px 12px;border-radius:2px;transition:background .15s,color .15s;}
+    nav.top-nav a:hover{background:var(--surface-high);color:var(--on-surface);}
+    nav.top-nav a.active{color:var(--primary);border-bottom:2px solid var(--primary);}
+    .header-right{display:flex;align-items:center;gap:16px;}
+    .header-right button{background:none;border:none;cursor:pointer;color:var(--on-surface-var);display:flex;align-items:center;transition:color .15s;}
+    .header-right button:hover{color:var(--primary);}
+    .header-right .material-symbols-outlined{font-size:22px;}
+    .live-badge{display:flex;align-items:center;gap:8px;background:rgba(14,14,14,.9);border:1px solid var(--outline-var);border-radius:2px;padding:6px 12px;}
+    .live-badge .dot{width:8px;height:8px;border-radius:50%;background:var(--primary);animation:pulse 2s infinite;}
+    .live-badge .label{font-family:var(--font-mono);font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--primary);}
+    @keyframes pulse{0%{transform:scale(.95);box-shadow:0 0 0 0 rgba(242,202,80,.7);}70%{transform:scale(1);box-shadow:0 0 0 6px rgba(242,202,80,0);}100%{transform:scale(.95);box-shadow:0 0 0 0 rgba(242,202,80,0);}}
+    .body-wrap{display:flex;height:100vh;padding-top:64px;}
+    aside.sidebar{width:280px;flex-shrink:0;background:var(--bg);border-right:1px solid var(--outline-var);display:flex;flex-direction:column;padding:24px 16px;height:100%;overflow-y:auto;}
+    .system-id{display:flex;align-items:center;gap:12px;padding:0 8px;margin-bottom:32px;}
+    .system-id .icon-wrap{width:36px;height:36px;border-radius:50%;background:var(--primary-container);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .system-id .icon-wrap .material-symbols-outlined{font-size:18px;color:var(--on-primary);font-variation-settings:'FILL' 1;}
+    .system-id h2{font-size:16px;font-weight:600;color:var(--primary);letter-spacing:-.02em;line-height:1;}
+    .system-id p{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--on-surface-var);margin-top:3px;}
+    nav.side-nav{flex:1;display:flex;flex-direction:column;gap:2px;}
+    nav.side-nav a{display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:2px;text-decoration:none;font-family:var(--font-mono);font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--on-surface-var);opacity:.7;transition:background .15s,color .15s,opacity .15s;}
+    nav.side-nav a .material-symbols-outlined{font-size:18px;}
+    nav.side-nav a:hover{background:var(--surface-low);color:var(--on-surface);opacity:1;}
+    nav.side-nav a.active{color:var(--primary);background:var(--surface-high);border-right:2px solid var(--primary);opacity:1;}
+    .sidebar-footer{margin-top:auto;padding-top:16px;}
+    .btn-dispatch{width:100%;padding:12px;background:var(--primary-container);color:var(--on-primary);border:none;cursor:pointer;font-family:var(--font-mono);font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;border-radius:2px;transition:opacity .15s;margin-bottom:16px;}
+    .btn-dispatch:hover{opacity:.85;}
+    .sidebar-links{border-top:1px solid var(--outline-var);padding-top:12px;display:flex;flex-direction:column;gap:2px;}
+    .sidebar-links a{display:flex;align-items:center;gap:12px;padding:8px;color:var(--on-surface-var);text-decoration:none;font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;border-radius:2px;transition:color .15s;}
+    .sidebar-links a:hover{color:var(--primary);}
+    .sidebar-links a .material-symbols-outlined{font-size:16px;}
+    main{flex:1;display:flex;gap:16px;padding:16px;height:100%;overflow:hidden;position:relative;}
+    .map-section{flex:1;position:relative;border-radius:4px;overflow:hidden;border:1px solid var(--outline-var);background:linear-gradient(180deg,var(--surface-low) 0%,var(--surface) 100%);}
+    #map{width:100%;height:100%;}
+    .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(0.75) contrast(1.15);}
+    .leaflet-container{background:var(--surface);}
+    .map-overlay-top{position:absolute;top:12px;right:12px;z-index:500;pointer-events:none;}
+    .map-status-badge{display:flex;align-items:center;gap:8px;background:rgba(14,14,14,.92);border:1px solid var(--outline-var);border-radius:4px;padding:8px 14px;backdrop-filter:blur(8px);pointer-events:auto;}
+    .map-status-badge .dot{width:7px;height:7px;border-radius:50%;background:var(--primary);animation:pulse 2s infinite;}
+    .map-status-badge .label{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--primary);}
+    .map-coords{position:absolute;bottom:12px;left:12px;z-index:500;font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;color:var(--on-surface-var);background:rgba(14,14,14,.85);border:1px solid var(--outline-var);border-radius:2px;padding:6px 10px;}
+    .right-panel{width:340px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;overflow-y:auto;}
+    .right-panel::-webkit-scrollbar{width:3px;} .right-panel::-webkit-scrollbar-thumb{background:var(--outline-var);}
+    .panel-heading{font-size:20px;font-weight:500;letter-spacing:-.02em;color:var(--on-surface);line-height:1.2;}
+    .glass-card{background:linear-gradient(180deg,var(--surface-low) 0%,var(--surface) 100%);border:1px solid var(--outline-var);border-radius:4px;padding:16px;}
+    .glass-card.active-route{box-shadow:inset 0 0 12px rgba(212,175,55,.12);border-color:var(--primary-container);}
+    .card-tag{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--primary);display:block;margin-bottom:4px;}
+    .card-tag.muted{color:var(--on-surface-var);}
+    .card-title{font-size:15px;font-weight:600;color:var(--on-surface);}
+    .card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+    .eta-badge{font-family:var(--font-mono);font-size:11px;font-weight:500;letter-spacing:.06em;padding:4px 10px;border-radius:2px;}
+    .eta-badge.primary{background:rgba(242,202,80,.1);color:var(--primary);border:1px solid rgba(242,202,80,.3);}
+    .eta-badge.muted{background:var(--surface-highest);color:var(--on-surface-var);border:1px solid var(--outline-var);}
+    .route-nodes{display:flex;flex-direction:column;gap:0;margin-bottom:14px;}
+    .node-row{display:flex;align-items:center;gap:12px;}
+    .node-dot{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--outline-var);background:var(--surface-container);flex-shrink:0;}
+    .node-dot.active{background:var(--primary);border-color:var(--primary);}
+    .node-label{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--on-surface-var);}
+    .node-label.bright{color:var(--on-surface);}
+    .node-connector{display:flex;align-items:center;margin-left:3px;height:20px;}
+    .connector-line{width:2px;height:100%;background:rgba(242,202,80,.4);border-radius:1px;position:relative;overflow:hidden;}
+    .connector-line::after{content:'';position:absolute;top:-100%;left:0;right:0;height:100%;background:var(--primary);animation:flow 1.5s linear infinite;}
+    @keyframes flow{0%{top:-100%;}100%{top:100%;}}
+    .card-footer{display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid var(--outline-var);margin-top:4px;}
+    .efficiency-label{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--on-surface-var);}
+    .efficiency-label strong{color:var(--primary);}
+    .btn-execute{font-family:var(--font-mono);font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;background:var(--primary);color:var(--on-primary);border:none;cursor:pointer;padding:8px 16px;border-radius:2px;transition:opacity .15s;}
+    .btn-execute:hover{opacity:.85;} .btn-execute:disabled{opacity:.4;cursor:not-allowed;}
+    .monitor-row{display:flex;align-items:center;gap:10px;color:var(--on-surface-var);}
+    .monitor-row .material-symbols-outlined{font-size:16px;color:var(--outline);}
+    .monitor-row span.txt{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;}
+    .optimizer-section{display:flex;flex-direction:column;gap:10px;}
+    .field-label{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--on-surface-var);display:block;margin-bottom:5px;}
+    .styled-select{width:100%;padding:8px 10px;background:var(--surface-container);border:1px solid var(--outline-var);border-radius:2px;color:var(--on-surface);font-family:var(--font-mono);font-size:12px;letter-spacing:.04em;outline:none;transition:border-color .15s;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2399907c'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;}
+    .styled-select:focus{border-color:var(--primary);}
+    .btn-find-route{width:100%;padding:12px;background:var(--primary);color:var(--on-primary);border:none;cursor:pointer;font-family:var(--font-mono);font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;border-radius:2px;transition:opacity .15s,transform .1s;margin-top:4px;}
+    .btn-find-route:hover{opacity:.88;} .btn-find-route:active{transform:scale(.99);} .btn-find-route:disabled{opacity:.4;cursor:not-allowed;}
+    #result{font-family:var(--font-mono);font-size:11px;line-height:1.7;letter-spacing:.04em;color:var(--on-surface-var);background:var(--surface-container);border:1px solid var(--outline-var);border-radius:2px;padding:10px 12px;white-space:pre-wrap;min-height:48px;}
+    #result.success{border-color:var(--primary-container);color:var(--on-surface);}
+    #result.error{border-color:#93000a;color:var(--error);}
+    .legend-card{display:flex;flex-direction:column;gap:6px;}
+    .legend-row{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;color:var(--on-surface-var);}
+    .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+    hr.panel-divider{border:none;border-top:1px solid var(--outline-var);margin:2px 0;}
+    .leaflet-popup-content-wrapper{background:var(--surface-low)!important;border:1px solid var(--outline-var)!important;border-radius:4px!important;color:var(--on-surface)!important;font-family:var(--font-mono)!important;font-size:11px!important;box-shadow:0 4px 24px rgba(0,0,0,.6)!important;}
+    .leaflet-popup-tip{background:var(--surface-low)!important;}
+    .leaflet-popup-close-button{color:var(--on-surface-var)!important;}
+  </style>
+</head>
+<body>
+<div id="app">
+  <!-- TOP NAVBAR -->
+  <header>
+    <div class="header-left">
+      <div class="brand">STREETFLOW<span>_LIVE</span></div>
+      <nav class="top-nav">
+        <a href="#" id="nav-fleet">Fleet</a>
+        <a href="#" class="active" id="nav-routes">Routes</a>
+        <a href="#" id="nav-analytics">Analytics</a>
+        <a href="#" id="nav-schedule">Schedule</a>
+      </nav>
+    </div>
+    <div class="header-right">
+      <div class="live-badge">
+        <div class="dot"></div>
+        <span class="label">Live Sync</span>
+      </div>
+      <button title="Notifications">
+        <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">notifications</span>
+      </button>
+      <button title="Settings">
+        <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">settings</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="body-wrap">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="system-id">
+        <div class="icon-wrap">
+          <span class="material-symbols-outlined">power_settings_new</span>
+        </div>
+        <div>
+          <h2>STRATOS_v2.4</h2>
+          <p>Operational Center</p>
+        </div>
+      </div>
+      <nav class="side-nav">
+        <a href="#" id="sn-command"><span class="material-symbols-outlined">dashboard</span>Command</a>
+        <a href="#" class="active" id="sn-map"><span class="material-symbols-outlined">map</span>Live Map</a>
+        <a href="#" id="sn-logistics"><span class="material-symbols-outlined">hub</span>Logistics</a>
+        <a href="#" id="sn-assets"><span class="material-symbols-outlined">local_shipping</span>Assets</a>
+        <a href="#" id="sn-personnel"><span class="material-symbols-outlined">groups</span>Personnel</a>
+        <a href="simple-map.html" id="sn-simple-map"><span class="material-symbols-outlined">layers</span>Simple Map</a>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="btn-dispatch" id="newDispatchBtn">New Dispatch</button>
+        <div class="sidebar-links">
+          <a href="profile.html"><span class="material-symbols-outlined">person</span>Profile</a>
+          <a href="#"><span class="material-symbols-outlined">help_outline</span>Support</a>
+          <a href="landing.html"><span class="material-symbols-outlined">logout</span>Sign Out</a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main>
+      <!-- MAP -->
+      <section class="map-section">
+        <div id="map"></div>
+        <div class="map-overlay-top">
+          <div class="map-status-badge">
+            <div class="dot"></div>
+            <span class="label">Bangalore Grid · 16 Sensors</span>
+          </div>
+        </div>
+        <div class="map-coords" id="mapCoords">12.9716° N, 77.5946° E</div>
+      </section>
+
+      <!-- RIGHT PANEL -->
+      <div class="right-panel">
+        <p class="panel-heading">Active Logistics</p>
+
+        <!-- Optimized Route Card -->
+        <div class="glass-card active-route" id="optimizedCard">
+          <div class="card-header">
+            <div>
+              <span class="card-tag">Optimized Path</span>
+              <div class="card-title" id="routeAlphaTitle">Route Alpha</div>
+            </div>
+            <div class="eta-badge primary" id="etaBadge">—</div>
+          </div>
+          <div class="route-nodes" id="routeNodes">
+            <div class="node-row">
+              <div class="node-dot"></div>
+              <span class="node-label" id="nodeOrigin">Select source</span>
+            </div>
+            <div class="node-connector"><div class="connector-line"></div></div>
+            <div class="node-row">
+              <div class="node-dot active"></div>
+              <span class="node-label bright" id="nodeDest">Select target</span>
+            </div>
+          </div>
+          <div class="card-footer">
+            <span class="efficiency-label" id="efficiencyLabel">Efficiency: <strong>—</strong></span>
+            <button class="btn-execute" id="routeBtn">Execute</button>
+          </div>
+        </div>
+
+        <!-- Standard Route Card -->
+        <div class="glass-card" id="standardCard" style="opacity:.7;transition:opacity .2s;">
+          <div class="card-header">
+            <div>
+              <span class="card-tag muted">Standard Path</span>
+              <div class="card-title">Route Beta</div>
+            </div>
+            <div class="eta-badge muted" id="etaBeta">—</div>
+          </div>
+          <div class="monitor-row">
+            <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">route</span>
+            <span class="txt" id="betaStatus">Monitoring…</span>
+          </div>
+        </div>
+
+        <hr class="panel-divider"/>
+
+        <!-- Route Optimizer -->
+        <div class="glass-card optimizer-section">
+          <span class="card-tag" style="margin-bottom:12px;">Route Optimizer</span>
+          <div>
+            <label class="field-label" for="source">Source Sensor</label>
+            <select class="styled-select" id="source"></select>
+          </div>
+          <div>
+            <label class="field-label" for="target">Target Sensor</label>
+            <select class="styled-select" id="target"></select>
+          </div>
+          <button class="btn-find-route" id="findRouteBtn">Compute Route</button>
+          <div id="result">Awaiting dispatch…</div>
+        </div>
+
+        <hr class="panel-divider"/>
+
+        <!-- Legend -->
+        <div class="glass-card">
+          <span class="card-tag" style="margin-bottom:10px;">Speed Legend</span>
+          <div class="legend-card">
+            <div class="legend-row"><div class="legend-dot" style="background:#22c55e;"></div>Fast (&gt;50 mph)</div>
+            <div class="legend-row"><div class="legend-dot" style="background:#eab308;"></div>Moderate (30–50 mph)</div>
+            <div class="legend-row"><div class="legend-dot" style="background:#ef4444;"></div>Congested (&lt;30 mph)</div>
+            <div class="legend-row"><div class="legend-dot" style="background:#f2ca50;"></div>Predicted Route (gold)</div>
+            <div class="legend-row"><div class="legend-dot" style="background:#99907c;border-radius:0;height:2px;width:14px;"></div>Static Route (dashed)</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+  const API_BASE = "http://127.0.0.1:8000";
+
+  // Map init — Bangalore center, matches road coords
+  const map = L.map('map', { zoomControl: false }).setView([12.97, 77.64], 12);
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 19,
+  }).addTo(map);
+
+  map.on('mousemove', function(e) {
+    document.getElementById('mapCoords').textContent =
+      e.latlng.lat.toFixed(4) + '° N, ' + e.latlng.lng.toFixed(4) + '° E';
+  });
+
+  let sensorLocations = [];
+  let sensorMarkers = [];
+  let routeLine = null;
+  let staticRouteLine = null;
+
+  function speedColor(mph) {
+    if (mph > 50) return '#22c55e';
+    if (mph > 30) return '#eab308';
+    return '#ef4444';
+  }
+
+  // Expects bangalore_road_locations.csv alongside this file
+  async function loadSensorLocations() {
+    const res = await fetch('bangalore_road_locations.csv');
+    const text = await res.text();
+    const lines = text.trim().split('\n').slice(1);
+    sensorLocations = lines.map(line => {
+      const [index, road_name, area_name, latitude, longitude, source] = line.split(',');
+      return { index: +index, sensor_id: road_name, latitude: +latitude, longitude: +longitude };
+    });
+  }
+
+  function populateDropdowns() {
+    const sourceSel = document.getElementById('source');
+    const targetSel = document.getElementById('target');
+    sensorLocations.forEach(s => {
+      const opt1 = new Option('Sensor ' + s.index + ' — ' + s.sensor_id, s.index);
+      const opt2 = new Option('Sensor ' + s.index + ' — ' + s.sensor_id, s.index);
+      sourceSel.add(opt1);
+      targetSel.add(opt2);
+    });
+    // Default: ITPL Main Road -> Sony World Junction (index 13 -> 3), confirmed 8% improvement
+    sourceSel.value = "13";
+    targetSel.value = "3";
+    updateCardNodes();
+  }
+
+  function updateCardNodes() {
+    const sv = document.getElementById('source').value;
+    const tv = document.getElementById('target').value;
+    const src = sensorLocations.find(s => s.index === +sv);
+    const tgt = sensorLocations.find(s => s.index === +tv);
+    document.getElementById('nodeOrigin').textContent = src ? 'NODE ' + src.index + ' — ' + src.sensor_id : 'Select source';
+    document.getElementById('nodeDest').textContent = tgt ? 'NODE ' + tgt.index + ' — ' + tgt.sensor_id : 'Select target';
+  }
+
+  document.getElementById('source').addEventListener('change', updateCardNodes);
+  document.getElementById('target').addEventListener('change', updateCardNodes);
+
+  async function plotPredictedSpeeds() {
+    const res = await fetch(API_BASE + '/predict', { method: 'POST' });
+    if (!res.ok) { setResult('Error loading predictions: ' + res.status, 'error'); return; }
+    const data = await res.json();
+    const speeds = data.predicted_speeds_mph;
+    sensorMarkers.forEach(m => map.removeLayer(m));
+    sensorMarkers = [];
+    sensorLocations.forEach(s => {
+      const mph = speeds[s.index];
+      if (mph === undefined) return;
+      const marker = L.circleMarker([s.latitude, s.longitude], {
+        radius: 6, color: speedColor(mph), fillColor: speedColor(mph),
+        fillOpacity: 0.85, weight: 1.5,
+      }).addTo(map);
+      marker.bindPopup(
+        '<strong style="color:#f2ca50;font-family:JetBrains Mono,monospace;font-size:10px;letter-spacing:.08em;">SENSOR ' + s.index + '</strong><br/>' +
+        '<span style="font-size:11px;">' + s.sensor_id + '</span><br/>' +
+        '<span style="color:#f2ca50;">&#9651; ' + mph.toFixed(1) + ' mph</span>'
+      );
+      sensorMarkers.push(marker);
+    });
+  }
+
+  function setResult(text, state) {
+    const el = document.getElementById('result');
+    el.textContent = text;
+    el.className = state || '';
+  }
+
+  async function findRoute() {
+    const source = +document.getElementById('source').value;
+    const target = +document.getElementById('target').value;
+    const btn = document.getElementById('findRouteBtn');
+    if (source === target) { setResult('Source and target must differ.', 'error'); return; }
+    btn.disabled = true;
+    setResult('Computing optimal route…', '');
+    document.getElementById('etaBadge').textContent = '…';
+    try {
+      const res = await fetch(API_BASE + '/route', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: source, target: target }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        setResult('Error: ' + (err.detail || res.status), 'error');
+        return;
+      }
+      const data = await res.json();
+      if (routeLine)       map.removeLayer(routeLine);
+      if (staticRouteLine) map.removeLayer(staticRouteLine);
+      const idToLatLng = function(id) {
+        const s = sensorLocations.find(function(s){ return s.index === id; });
+        return s ? [s.latitude, s.longitude] : null;
+      };
+      const predCoords   = data.predicted_route.map(idToLatLng).filter(Boolean);
+      const staticCoords = data.static_route.map(idToLatLng).filter(Boolean);
+      routeLine       = L.polyline(predCoords,   { color: '#f2ca50', weight: 4, opacity: 0.9 }).addTo(map);
+      staticRouteLine = L.polyline(staticCoords, { color: '#99907c', weight: 2.5, dashArray: '6,6', opacity: 0.6 }).addTo(map);
+      map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+      const imp = data.improvement_pct.toFixed(1);
+      document.getElementById('efficiencyLabel').innerHTML = 'Improvement: <strong>' + imp + '%</strong>';
+      document.getElementById('etaBadge').textContent = '+' + imp + '%';
+      document.getElementById('etaBeta').textContent = 'Fallback';
+      document.getElementById('betaStatus').textContent = data.static_route.length + ' hops · static graph';
+      document.getElementById('standardCard').style.opacity = '1';
+      setResult(
+        'PREDICTED ROUTE (gold):\n' + data.predicted_route.join(' \u2192 ') + '\n\n' +
+        'STATIC ROUTE (dashed):\n' + data.static_route.join(' \u2192 ') + '\n\n' +
+        'IMPROVEMENT: ' + imp + '%',
+        'success'
+      );
+    } catch (e) {
+      setResult('Request failed: ' + e.message + '\nIs the API running at ' + API_BASE + '?', 'error');
+      document.getElementById('etaBadge').textContent = 'ERR';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  document.getElementById('findRouteBtn').addEventListener('click', findRoute);
+  document.getElementById('routeBtn').addEventListener('click', findRoute);
+
+  document.querySelectorAll('.top-nav a, .side-nav a').forEach(function(el) {
+    el.addEventListener('click', function(e){ e.preventDefault(); });
+  });
+
+  (async function init() {
+    try {
+      await loadSensorLocations();
+      populateDropdowns();
+      await plotPredictedSpeeds();
+      setResult('Predictions loaded. Select source & target, then click Compute Route.', '');
+    } catch(err) {
+      setResult('Init failed: ' + err.message + '\nEnsure API is running and CSV is accessible.', 'error');
+    }
+  })();
+</script>
+</body>
+</html>

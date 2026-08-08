@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Profile &mdash; STREETFLOW LIVE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="theme.css"/>
+  <style>
+    .profile-wrap { max-width: 560px; display: flex; flex-direction: column; gap: 20px; }
+    .profile-head { display: flex; align-items: center; gap: 20px; margin-bottom: 8px; }
+    .avatar-ring {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: var(--primary-container); border: 2px solid var(--outline-var);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .avatar-init { font-size: 28px; font-weight: 700; color: var(--on-primary); }
+    .profile-title h1 { font-size: 22px; font-weight: 600; color: var(--on-surface); letter-spacing: -.02em; }
+    .profile-title p { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--on-surface-var); margin-top: 4px; }
+    .fields { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
+    .btn-row { display: flex; gap: 10px; padding-top: 12px; }
+    .btn-sm {
+      padding: 9px 18px; background: none; border: 1px solid var(--outline-var);
+      color: var(--on-surface-var); font-family: var(--font-mono); font-size: 11px;
+      font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
+      border-radius: 2px; cursor: pointer; transition: border-color .15s, color .15s;
+    }
+    .btn-sm:hover { border-color: var(--primary); color: var(--primary); }
+    .stub-note { font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; color: var(--outline); margin-top: 10px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="header-left">
+      <a class="brand" href="landing.html">STREETFLOW<span>_LIVE</span></a>
+      <nav class="top-nav">
+        <a href="#">Fleet</a>
+        <a href="dashboard.html">Routes</a>
+        <a href="#">Analytics</a>
+        <a href="#">Schedule</a>
+      </nav>
+    </div>
+    <div class="header-right">
+      <div class="live-badge"><div class="dot"></div><span class="label">Live Sync</span></div>
+      <a href="profile.html" class="header-icon-link" title="Profile">
+        <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">account_circle</span>
+      </a>
+    </div>
+  </header>
+  <div class="body-wrap">
+    <aside class="sidebar">
+      <div class="system-id">
+        <div class="icon-wrap"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">power_settings_new</span></div>
+        <div><h2>STRATOS_v2.4</h2><p>Operational Center</p></div>
+      </div>
+      <nav class="side-nav">
+        <a href="#" id="sn-command"><span class="material-symbols-outlined">dashboard</span>Command</a>
+        <a href="dashboard.html" id="sn-map"><span class="material-symbols-outlined">map</span>Live Map</a>
+        <a href="#" id="sn-logistics"><span class="material-symbols-outlined">hub</span>Logistics</a>
+        <a href="#" id="sn-assets"><span class="material-symbols-outlined">local_shipping</span>Assets</a>
+        <a href="#" id="sn-personnel"><span class="material-symbols-outlined">groups</span>Personnel</a>
+        <a href="simple-map.html" id="sn-simple-map"><span class="material-symbols-outlined">layers</span>Simple Map</a>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="btn-dispatch">New Dispatch</button>
+        <div class="sidebar-links">
+          <a href="profile.html"><span class="material-symbols-outlined">person</span>Profile</a>
+          <a href="#"><span class="material-symbols-outlined">help_outline</span>Support</a>
+          <a href="landing.html"><span class="material-symbols-outlined">logout</span>Sign Out</a>
+        </div>
+      </div>
+    </aside>
+    <main>
+      <div class="profile-wrap">
+        <span class="card-tag">Operator Profile</span>
+        <div class="glass-card">
+          <div class="profile-head">
+            <div class="avatar-ring">
+              <span class="avatar-init" id="avatarInit">U</span>
+            </div>
+            <div class="profile-title">
+              <h1 id="displayName">Operator Name</h1>
+              <p id="displayRole">Operational Center</p>
+            </div>
+          </div>
+          <div class="fields">
+            <div class="form-group">
+              <label class="form-label" for="pName">Display Name</label>
+              <input class="form-input" type="text" id="pName"
+                     value="Operator Name" readonly placeholder="Your name"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="pEmail">Email</label>
+              <input class="form-input" type="email" id="pEmail"
+                     value="operator@streetflow.io" readonly placeholder="Your email"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="pRole">Role</label>
+              <input class="form-input" type="text" id="pRole"
+                     value="Operational Center" readonly placeholder="Role"/>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn-sm" id="editBtn" onclick="startEdit()">Edit Profile</button>
+            <button class="btn-sm" id="saveBtn" style="display:none;" onclick="saveEdit()">Save</button>
+            <button class="btn-sm" id="cancelBtn" style="display:none;" onclick="cancelEdit()">Cancel</button>
+          </div>
+          <div class="stub-note" id="stubNote">Edit is a UI placeholder &mdash; no persistence yet.</div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script>
+  var prev = {};
+  var FIELDS = ['pName', 'pEmail', 'pRole'];
+
+  function startEdit() {
+    prev = {};
+    FIELDS.forEach(function(id) {
+      var el = document.getElementById(id);
+      prev[id] = el.value;
+      el.removeAttribute('readonly');
+      el.style.borderColor = 'var(--primary)';
+    });
+    document.getElementById('editBtn').style.display = 'none';
+    document.getElementById('saveBtn').style.display = '';
+    document.getElementById('cancelBtn').style.display = '';
+    document.getElementById('stubNote').textContent =
+      'Editing — changes are UI-only, not persisted to any backend.';
+  }
+
+  function saveEdit() {
+    FIELDS.forEach(function(id) {
+      var el = document.getElementById(id);
+      el.setAttribute('readonly', '');
+      el.style.borderColor = '';
+    });
+    var name = document.getElementById('pName').value.trim() || 'Operator Name';
+    document.getElementById('displayName').textContent = name;
+    document.getElementById('avatarInit').textContent = name.charAt(0).toUpperCase();
+    document.getElementById('editBtn').style.display = '';
+    document.getElementById('saveBtn').style.display = 'none';
+    document.getElementById('cancelBtn').style.display = 'none';
+    document.getElementById('stubNote').textContent =
+      'Edit is a UI placeholder — no persistence yet.';
+    console.log('[PROFILE STUB] saveEdit called — not persisted.');
+  }
+
+  function cancelEdit() {
+    FIELDS.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (prev[id] !== undefined) el.value = prev[id];
+      el.setAttribute('readonly', '');
+      el.style.borderColor = '';
+    });
+    document.getElementById('editBtn').style.display = '';
+    document.getElementById('saveBtn').style.display = 'none';
+    document.getElementById('cancelBtn').style.display = 'none';
+    document.getElementById('stubNote').textContent =
+      'Edit is a UI placeholder — no persistence yet.';
+  }
+</script>
+</body>
+</html>

@@ -1,38 +1,58 @@
-traffic_env/
-venv_new/
-model/data/
-__pycache__/
-*.pyc
-.ipynb_checkpoints/
-data/raw/
-data/*.zip
-data/*.h5
-*.pt
-*.ckpt
-.env
-.DS_Store
-venv/
-
-# Large data files (exceed GitHub's 100 MB limit)
-*.npy
-api/data/
-
-# Downloaded/generated data -- large, reproducible, shouldn't be in git
-**/data/METR-LA.zip
-**/data/node_values.npy
-**/data/adj_mat.npy
-data/
-
-# Model checkpoints
-*.pt
-*.pth
-
+# =============================================================
 # Python
+# =============================================================
 __pycache__/
 *.pyc
+*.pyo
+.ipynb_checkpoints/
 .venv/
 venv/
 venv_new/
+traffic_env/
 
+# =============================================================
+# Environment & secrets
+# =============================================================
+.env
+.env.*
+
+# =============================================================
+# OS
+# =============================================================
+.DS_Store
+Thumbs.db
+
+# =============================================================
 # IDE
+# =============================================================
 .vscode/
+.idea/
+
+# =============================================================
+# Large / generated data files  (exceed GitHub 100 MB limit)
+# =============================================================
+*.npy
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.zip
+data/raw/
+api/data/
+model/data/
+
+# =============================================================
+# Firebase CLI artifacts  (auto-generated, not source code)
+# =============================================================
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+ui-debug.log
+
+# NOTE: firebase.json, firestore.rules, firestore.indexes.json
+#       and the dataconnect/ folder ARE tracked intentionally.
+
+# =============================================================
+# Frontend — duplicated assets (canonical copy lives in data/)
+# =============================================================
+frontend/bangalore_road_locations.csv

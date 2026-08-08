@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Simple Map &mdash; STREETFLOW LIVE</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"><\/script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="theme.css"/>
+  <style>
+    /* No tile filter — plain default OSM appearance */
+    .map-outer { flex: 1; padding: 16px; display: flex; overflow: hidden; }
+    .map-frame {
+      flex: 1; border-radius: 4px; overflow: hidden;
+      border: 1px solid var(--outline-var);
+    }
+    #simple-map { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="header-left">
+      <a class="brand" href="landing.html">STREETFLOW<span>_LIVE</span></a>
+      <nav class="top-nav">
+        <a href="#">Fleet</a>
+        <a href="dashboard.html" class="active">Routes</a>
+        <a href="#">Analytics</a>
+        <a href="#">Schedule</a>
+      </nav>
+    </div>
+    <div class="header-right">
+      <div class="live-badge"><div class="dot"></div><span class="label">Live Sync</span></div>
+      <a href="profile.html" class="header-icon-link" title="Profile">
+        <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">account_circle</span>
+      </a>
+    </div>
+  </header>
+  <div class="body-wrap">
+    <aside class="sidebar">
+      <div class="system-id">
+        <div class="icon-wrap"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">power_settings_new</span></div>
+        <div><h2>STRATOS_v2.4</h2><p>Operational Center</p></div>
+      </div>
+      <nav class="side-nav">
+        <a href="#" id="sn-command"><span class="material-symbols-outlined">dashboard</span>Command</a>
+        <a href="dashboard.html" id="sn-map"><span class="material-symbols-outlined">map</span>Live Map</a>
+        <a href="#" id="sn-logistics"><span class="material-symbols-outlined">hub</span>Logistics</a>
+        <a href="#" id="sn-assets"><span class="material-symbols-outlined">local_shipping</span>Assets</a>
+        <a href="#" id="sn-personnel"><span class="material-symbols-outlined">groups</span>Personnel</a>
+        <a href="simple-map.html" id="sn-simple-map" class="active"><span class="material-symbols-outlined">layers</span>Simple Map</a>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="btn-dispatch">New Dispatch</button>
+        <div class="sidebar-links">
+          <a href="profile.html"><span class="material-symbols-outlined">person</span>Profile</a>
+          <a href="#"><span class="material-symbols-outlined">help_outline</span>Support</a>
+          <a href="landing.html"><span class="material-symbols-outlined">logout</span>Sign Out</a>
+        </div>
+      </div>
+    </aside>
+    <main class="no-pad">
+      <div class="map-outer">
+        <div class="map-frame">
+          <div id="simple-map"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script>
+  // Plain Leaflet map — default OpenStreetMap tiles, no dark theme, no tile filter.
+  // Loads all 16 Bangalore road locations from bangalore_road_locations.csv
+  // CSV columns (per spec): index, road_name, area_name, latitude, longitude, source
+  var smap = L.map('simple-map').setView([12.97, 77.64], 12);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19
+  }).addTo(smap);
+
+  // Load CSV, place default Leaflet markers, popup = road_name + area_name
+  fetch('bangalore_road_locations.csv')
+    .then(function(r) { return r.text(); })
+    .then(function(text) {
+      var lines = text.trim().split('\n').slice(1); // skip header row
+      lines.forEach(function(line) {
+        // Split into at most 6 parts so the 'source' column (which contains
+        // commas like "approximated (parent area: X)") doesn't shift columns.
+        var p         = line.split(',', 6);
+        var road_name = (p[1] || '').trim();
+        var area_name = (p[2] || '').trim();
+        var lat       = parseFloat(p[3]);
+        var lng       = parseFloat(p[4]);
+        if (isNaN(lat) || isNaN(lng)) return;
+        L.marker([lat, lng])
+          .addTo(smap)
+          .bindPopup('<strong>' + road_name + '</strong><br/>' + area_name);
+      });
+    })
+    .catch(function(err) {
+      console.error('[SIMPLE MAP] Could not load bangalore_road_locations.csv:', err);
+    });
+<\/script>
+</body>
+</html>

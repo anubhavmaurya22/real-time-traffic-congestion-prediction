@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>STREETFLOW LIVE</title>
+  <meta name="description" content="Real-time traffic congestion prediction and dynamic route optimization for Bangalore."/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="theme.css"/>
+  <style>
+    /* Landing-specific overrides */
+    .landing-main {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 20px; padding: 48px 24px; text-align: center; overflow: auto;
+    }
+    .placeholder-tag {
+      font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+      letter-spacing: .14em; text-transform: uppercase;
+      color: var(--outline); border: 1px dashed var(--outline-var);
+      border-radius: 2px; padding: 5px 14px; display: inline-block;
+    }
+    .placeholder-body {
+      color: var(--on-surface-var); font-family: var(--font-mono);
+      font-size: 12px; letter-spacing: .04em; line-height: 1.9;
+      max-width: 400px;
+    }
+    .lp-nav { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+    .lp-nav a {
+      font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+      letter-spacing: .1em; text-transform: uppercase; text-decoration: none;
+      padding: 10px 22px; border-radius: 2px; transition: opacity .15s;
+    }
+    .a-pri { background: var(--primary); color: var(--on-primary); }
+    .a-sec { border: 1px solid var(--outline-var); color: var(--on-surface-var); }
+    .lp-nav a:hover { opacity: .85; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="header-left">
+      <a class="brand" href="landing.html">STREETFLOW<span>_LIVE</span></a>
+      <nav class="top-nav">
+        <a href="#">Fleet</a>
+        <a href="dashboard.html">Routes</a>
+        <a href="#">Analytics</a>
+        <a href="#">Schedule</a>
+      </nav>
+    </div>
+    <div class="header-right">
+      <div class="live-badge"><div class="dot"></div><span class="label">Live Sync</span></div>
+      <a href="profile.html" class="header-icon-link" title="Profile">
+        <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">account_circle</span>
+      </a>
+    </div>
+  </header>
+  <div class="body-wrap">
+    <!-- Placeholder content area — user will design this section -->
+    <main class="landing-main">
+      <span class="placeholder-tag">Landing Page Shell</span>
+      <p class="placeholder-body">
+        Content area reserved for landing page design.<br/>
+        This is a routing placeholder only &mdash; add real content here.
+      </p>
+      <div class="lp-nav">
+        <a href="login.html" class="a-pri">Sign In</a>
+        <a href="register.html" class="a-sec">Register</a>
+        <a href="dashboard.html" class="a-sec">Dashboard</a>
+      </div>
+    </main>
+  </div>
+</div>
+</body>
+</html>

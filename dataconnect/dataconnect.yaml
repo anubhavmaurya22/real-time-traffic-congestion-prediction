@@ -1,0 +1,13 @@
+specVersion: "v1"
+serviceId: "traff2ic-detector-service"
+location: "us-east4"
+schemas:
+  - source: "./schema"
+    datasource:
+      postgresql:
+        database: "traff2ic-detector-database"
+        cloudSql:
+          instanceId: "traff2ic-detector-instance"
+          # schemaValidation: "STRICT"     # STRICT mode makes Postgres schema match Data Connect exactly.
+          # schemaValidation: "COMPATIBLE" # COMPATIBLE mode makes Postgres schema compatible with Data Connect.
+connectorDirs: ["./example"]

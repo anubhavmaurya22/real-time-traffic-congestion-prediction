@@ -1,0 +1,24 @@
+type City @table {
+  name: String!
+  state: String!
+  createdAt: Timestamp!
+}
+
+type User @table {
+  name: String!
+  email: String! @unique
+  passwordHash: String!
+  defaultCity: City
+  createdAt: Timestamp!
+}
+
+type SavedRoute @table {
+  user: User!
+  city: City!
+  sourceRoad: String!
+  targetRoad: String!
+  predictedTimeMinutes: Int!
+  baselineTimeMinutes: Int!
+  timeSavedMinutes: Int!
+  createdAt: Timestamp!
+}

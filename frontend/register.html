@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Register &mdash; STREETFLOW LIVE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="theme.css"/>
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card glass-card">
+    <div class="auth-brand">
+      <a class="brand" href="landing.html">STREETFLOW<span>_LIVE</span></a>
+      <div class="subtitle">Create Operator Account</div>
+    </div>
+    <form id="registerForm" class="form-stack" novalidate>
+      <div class="form-group">
+        <label class="form-label" for="regName">Full Name</label>
+        <input class="form-input" type="text" id="regName" name="name"
+               placeholder="Operator Name" autocomplete="name"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="regEmail">Email</label>
+        <input class="form-input" type="email" id="regEmail" name="email"
+               placeholder="operator@streetflow.io" autocomplete="email"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="regPassword">Password</label>
+        <input class="form-input" type="password" id="regPassword" name="password"
+               placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="new-password"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="regConfirm">Confirm Password</label>
+        <input class="form-input" type="password" id="regConfirm" name="confirm"
+               placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="new-password"/>
+      </div>
+      <div class="form-err" id="registerErr" aria-live="polite"></div>
+      <button type="submit" class="btn-primary" id="registerBtn">Create Account</button>
+      <div class="form-footer">Already have an account? <a href="login.html">Sign In</a></div>
+      <div class="form-footer"><a href="landing.html">&larr; Back to Landing</a></div>
+    </form>
+  </div>
+</div>
+<script>
+  // STUB: No auth backend exists yet.
+  // Validates password match client-side only, logs to console, redirects to dashboard.
+  document.getElementById('registerForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var name     = document.getElementById('regName').value.trim();
+    var email    = document.getElementById('regEmail').value.trim();
+    var password = document.getElementById('regPassword').value;
+    var confirm  = document.getElementById('regConfirm').value;
+    var errEl    = document.getElementById('registerErr');
+    if (password !== confirm) {
+      errEl.textContent = 'Passwords do not match.';
+      return;
+    }
+    errEl.textContent = '';
+    console.log('[REGISTER STUB] name:', name, '| email:', email, '| password length:', password.length);
+    window.location.href = 'dashboard.html';
+  });
+</script>
+</body>
+</html>
