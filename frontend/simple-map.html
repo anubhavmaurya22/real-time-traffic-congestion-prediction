@@ -134,7 +134,16 @@
   </div>
 </div>
 <script>
-  const API_BASE = "http://127.0.0.1:8000";
+  // ---------------------------------------------------------------------------
+  // API endpoint — auto-detects environment:
+  //   Local dev  → http://127.0.0.1:8000  (uvicorn running locally)
+  //   Firebase   → http://YOUR_EC2_IP:8000  (replace with real EC2 public IP)
+  // ---------------------------------------------------------------------------
+  const _onFirebase = window.location.hostname.includes('web.app') ||
+                      window.location.hostname.includes('firebaseapp.com');
+  const API_BASE = _onFirebase
+    ? 'http://YOUR_EC2_IP:8000'   // ← replace with your EC2 public IP after deploying
+    : 'http://127.0.0.1:8000';
 
   // Dark-themed Leaflet map
   var smap = L.map('simple-map').setView([12.97, 77.64], 12);
