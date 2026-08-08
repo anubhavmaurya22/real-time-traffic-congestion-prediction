@@ -53,8 +53,7 @@
     nav.side-nav a:hover{background:var(--surface-low);color:var(--on-surface);opacity:1;}
     nav.side-nav a.active{color:var(--primary);background:var(--surface-high);border-right:2px solid var(--primary);opacity:1;}
     .sidebar-footer{margin-top:auto;padding-top:16px;}
-    .btn-dispatch{width:100%;padding:12px;background:var(--primary-container);color:var(--on-primary);border:none;cursor:pointer;font-family:var(--font-mono);font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;border-radius:2px;transition:opacity .15s;margin-bottom:16px;}
-    .btn-dispatch:hover{opacity:.85;}
+
     .sidebar-links{border-top:1px solid var(--outline-var);padding-top:12px;display:flex;flex-direction:column;gap:2px;}
     .sidebar-links a{display:flex;align-items:center;gap:12px;padding:8px;color:var(--on-surface-var);text-decoration:none;font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;border-radius:2px;transition:color .15s;}
     .sidebar-links a:hover{color:var(--primary);}
@@ -124,10 +123,9 @@
     <div class="header-left">
       <div class="brand">STREETFLOW<span>_LIVE</span></div>
       <nav class="top-nav">
-        <a href="#" id="nav-fleet">Fleet</a>
-        <a href="#" class="active" id="nav-routes">Routes</a>
-        <a href="#" id="nav-analytics">Analytics</a>
-        <a href="#" id="nav-schedule">Schedule</a>
+        <a href="dashboard.html" class="active" id="nav-livemap">Live Map</a>
+        <a href="simple-map.html" id="nav-sensorgrid">Sensor Grid</a>
+        <a href="profile.html" id="nav-profile">Profile</a>
       </nav>
     </div>
     <div class="header-right">
@@ -153,22 +151,17 @@
         </div>
         <div>
           <h2>STRATOS_v2.4</h2>
-          <p>Operational Center</p>
+          <p>Prediction Engine</p>
         </div>
       </div>
       <nav class="side-nav">
         <a href="#" id="sn-command"><span class="material-symbols-outlined">dashboard</span>Command</a>
-        <a href="#" class="active" id="sn-map"><span class="material-symbols-outlined">map</span>Live Map</a>
-        <a href="#" id="sn-logistics"><span class="material-symbols-outlined">hub</span>Logistics</a>
-        <a href="#" id="sn-assets"><span class="material-symbols-outlined">local_shipping</span>Assets</a>
-        <a href="#" id="sn-personnel"><span class="material-symbols-outlined">groups</span>Personnel</a>
-        <a href="simple-map.html" id="sn-simple-map"><span class="material-symbols-outlined">layers</span>Simple Map</a>
+        <a href="dashboard.html" class="active" id="sn-map"><span class="material-symbols-outlined">map</span>Live Map</a>
+        <a href="simple-map.html" id="sn-sensorgrid"><span class="material-symbols-outlined">layers</span>Sensor Grid</a>
+        <a href="profile.html" id="sn-profile"><span class="material-symbols-outlined">person</span>Profile</a>
       </nav>
       <div class="sidebar-footer">
-        <button class="btn-dispatch" id="newDispatchBtn">New Dispatch</button>
         <div class="sidebar-links">
-          <a href="profile.html"><span class="material-symbols-outlined">person</span>Profile</a>
-          <a href="#"><span class="material-symbols-outlined">help_outline</span>Support</a>
           <a href="landing.html"><span class="material-symbols-outlined">logout</span>Sign Out</a>
         </div>
       </div>
@@ -190,14 +183,14 @@
 
       <!-- RIGHT PANEL -->
       <div class="right-panel">
-        <p class="panel-heading">Active Logistics</p>
+        <p class="panel-heading">Route Comparison</p>
 
         <!-- Optimized Route Card -->
         <div class="glass-card active-route" id="optimizedCard">
           <div class="card-header">
             <div>
-              <span class="card-tag">Optimized Path</span>
-              <div class="card-title" id="routeAlphaTitle">Route Alpha</div>
+              <span class="card-tag">Predicted Route</span>
+              <div class="card-title" id="routeAlphaTitle">AI-Optimized</div>
             </div>
             <div class="eta-badge primary" id="etaBadge">—</div>
           </div>
@@ -222,8 +215,8 @@
         <div class="glass-card" id="standardCard" style="opacity:.7;transition:opacity .2s;">
           <div class="card-header">
             <div>
-              <span class="card-tag muted">Standard Path</span>
-              <div class="card-title">Route Beta</div>
+              <span class="card-tag muted">Static Route</span>
+              <div class="card-title">Baseline</div>
             </div>
             <div class="eta-badge muted" id="etaBeta">—</div>
           </div>
@@ -247,7 +240,7 @@
             <select class="styled-select" id="target"></select>
           </div>
           <button class="btn-find-route" id="findRouteBtn">Compute Route</button>
-          <div id="result">Awaiting dispatch…</div>
+          <div id="result">Select source &amp; target roads, then click Compute Route.</div>
         </div>
 
         <hr class="panel-divider"/>
@@ -415,9 +408,9 @@
   document.getElementById('findRouteBtn').addEventListener('click', findRoute);
   document.getElementById('routeBtn').addEventListener('click', findRoute);
 
-  document.querySelectorAll('.top-nav a, .side-nav a').forEach(function(el) {
-    el.addEventListener('click', function(e){ e.preventDefault(); });
-  });
+  // Only prevent default on the Command stub (no page behind it yet)
+  var cmdLink = document.getElementById('sn-command');
+  if (cmdLink) cmdLink.addEventListener('click', function(e){ e.preventDefault(); });
 
   (async function init() {
     try {

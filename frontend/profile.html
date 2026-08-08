@@ -36,10 +36,9 @@
     <div class="header-left">
       <a class="brand" href="landing.html">STREETFLOW<span>_LIVE</span></a>
       <nav class="top-nav">
-        <a href="#">Fleet</a>
-        <a href="dashboard.html">Routes</a>
-        <a href="#">Analytics</a>
-        <a href="#">Schedule</a>
+        <a href="dashboard.html" id="nav-livemap">Live Map</a>
+        <a href="simple-map.html" id="nav-sensorgrid">Sensor Grid</a>
+        <a href="profile.html" class="active" id="nav-profile">Profile</a>
       </nav>
     </div>
     <div class="header-right">
@@ -53,28 +52,23 @@
     <aside class="sidebar">
       <div class="system-id">
         <div class="icon-wrap"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">power_settings_new</span></div>
-        <div><h2>STRATOS_v2.4</h2><p>Operational Center</p></div>
+        <div><h2>STRATOS_v2.4</h2><p>Prediction Engine</p></div>
       </div>
       <nav class="side-nav">
         <a href="#" id="sn-command"><span class="material-symbols-outlined">dashboard</span>Command</a>
         <a href="dashboard.html" id="sn-map"><span class="material-symbols-outlined">map</span>Live Map</a>
-        <a href="#" id="sn-logistics"><span class="material-symbols-outlined">hub</span>Logistics</a>
-        <a href="#" id="sn-assets"><span class="material-symbols-outlined">local_shipping</span>Assets</a>
-        <a href="#" id="sn-personnel"><span class="material-symbols-outlined">groups</span>Personnel</a>
-        <a href="simple-map.html" id="sn-simple-map"><span class="material-symbols-outlined">layers</span>Simple Map</a>
+        <a href="simple-map.html" id="sn-sensorgrid"><span class="material-symbols-outlined">layers</span>Sensor Grid</a>
+        <a href="profile.html" class="active" id="sn-profile"><span class="material-symbols-outlined">person</span>Profile</a>
       </nav>
       <div class="sidebar-footer">
-        <button class="btn-dispatch">New Dispatch</button>
         <div class="sidebar-links">
-          <a href="profile.html"><span class="material-symbols-outlined">person</span>Profile</a>
-          <a href="#"><span class="material-symbols-outlined">help_outline</span>Support</a>
           <a href="landing.html"><span class="material-symbols-outlined">logout</span>Sign Out</a>
         </div>
       </div>
     </aside>
     <main>
       <div class="profile-wrap">
-        <span class="card-tag">Operator Profile</span>
+        <span class="card-tag">User Profile</span>
         <div class="glass-card">
           <div class="profile-head">
             <div class="avatar-ring">
@@ -82,7 +76,7 @@
             </div>
             <div class="profile-title">
               <h1 id="displayName">Operator Name</h1>
-              <p id="displayRole">Operational Center</p>
+              <p id="displayRole">Analyst</p>
             </div>
           </div>
           <div class="fields">
@@ -99,7 +93,7 @@
             <div class="form-group">
               <label class="form-label" for="pRole">Role</label>
               <input class="form-input" type="text" id="pRole"
-                     value="Operational Center" readonly placeholder="Role"/>
+                     value="Analyst" readonly placeholder="Role"/>
             </div>
           </div>
           <div class="btn-row">
