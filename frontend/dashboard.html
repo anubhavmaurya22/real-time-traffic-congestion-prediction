@@ -107,6 +107,14 @@
     #result{font-family:var(--font-mono);font-size:11px;line-height:1.7;letter-spacing:.04em;color:var(--on-surface-var);background:var(--surface-container);border:1px solid var(--outline-var);border-radius:2px;padding:10px 12px;white-space:pre-wrap;min-height:48px;}
     #result.success{border-color:var(--primary-container);color:var(--on-surface);}
     #result.error{border-color:#93000a;color:var(--error);}
+    /* Geolocation */
+    .geo-row{display:flex;align-items:center;gap:8px;margin-top:6px;}
+    .btn-geo{display:flex;align-items:center;gap:6px;padding:6px 10px;background:none;border:1px solid var(--outline-var);border-radius:2px;color:var(--on-surface-var);font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:border-color .15s,color .15s;white-space:nowrap;}
+    .btn-geo:hover{border-color:var(--primary);color:var(--primary);}
+    .btn-geo:disabled{opacity:.4;cursor:not-allowed;}
+    .btn-geo .material-symbols-outlined{font-size:14px;}
+    #geo-snap-info{font-family:var(--font-mono);font-size:10px;letter-spacing:.04em;line-height:1.5;color:var(--on-surface-var);padding:6px 8px;background:var(--surface-container);border-left:2px solid var(--primary-container);border-radius:0 2px 2px 0;display:none;margin-top:4px;}
+    #geo-snap-info.error{border-left-color:#93000a;color:var(--error);}
     .legend-card{display:flex;flex-direction:column;gap:6px;}
     .legend-row{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;color:var(--on-surface-var);}
     .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
@@ -232,8 +240,14 @@
         <div class="glass-card optimizer-section">
           <span class="card-tag" style="margin-bottom:12px;">Route Optimizer</span>
           <div>
-            <label class="field-label" for="source">Source Sensor</label>
+            <label class="field-label" for="source">Source Road</label>
             <select class="styled-select" id="source"></select>
+            <div class="geo-row">
+              <button class="btn-geo" id="geoBtn" title="Snap to nearest known road from your GPS position">
+                <span class="material-symbols-outlined">my_location</span>Use my location
+              </button>
+            </div>
+            <div id="geo-snap-info"></div>
           </div>
           <div>
             <label class="field-label" for="target">Target Sensor</label>
@@ -322,8 +336,102 @@
     document.getElementById('nodeDest').textContent = tgt ? 'NODE ' + tgt.index + ' — ' + tgt.sensor_id : 'Select target';
   }
 
-  document.getElementById('source').addEventListener('change', updateCardNodes);
+  document.getElementById('source').addEventListener('change', function() {
+    // Clear geo-snap info when user manually picks a road
+    var info = document.getElementById('geo-snap-info');
+    info.style.display = 'none';
+    info.className = '';
+    updateCardNodes();
+  });
   document.getElementById('target').addEventListener('change', updateCardNodes);
+
+  // ── Geolocation snap ─────────────────────────────────────────────────────────
+  // Haversine distance in km between two lat/lng points
+  function haversineKm(lat1, lon1, lat2, lon2) {
+    var R = 6371;
+    var dLat = (lat2 - lat1) * Math.PI / 180;
+    var dLon = (lon2 - lon1) * Math.PI / 180;
+    var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function snapToNearestSensor(userLat, userLng) {
+    var best = null, bestDist = Infinity;
+    sensorLocations.forEach(function(s) {
+      var d = haversineKm(userLat, userLng, s.latitude, s.longitude);
+      if (d < bestDist) { bestDist = d; best = s; }
+    });
+    return best ? { sensor: best, distKm: bestDist } : null;
+  }
+
+  document.getElementById('geoBtn').addEventListener('click', function() {
+    var btn  = document.getElementById('geoBtn');
+    var info = document.getElementById('geo-snap-info');
+
+    if (!navigator.geolocation) {
+      info.textContent = '⚠ Geolocation is not supported by this browser. Please select a road manually.';
+      info.className = 'error';
+      info.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    info.className = '';
+    info.textContent = 'Requesting location…';
+    info.style.display = 'block';
+
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        btn.disabled = false;
+        var userLat = pos.coords.latitude;
+        var userLng = pos.coords.longitude;
+
+        if (!sensorLocations.length) {
+          info.textContent = 'Sensor data not yet loaded — try again in a moment.';
+          info.className = 'error';
+          return;
+        }
+
+        var result = snapToNearestSensor(userLat, userLng);
+        if (!result) { info.textContent = 'Could not match to any known road.'; info.className = 'error'; return; }
+
+        // Select matched sensor in dropdown
+        document.getElementById('source').value = String(result.sensor.index);
+        updateCardNodes();
+
+        info.className = '';
+        info.textContent =
+          '📍 Using your location → nearest road:\n' +
+          result.sensor.sensor_id + ' (' + result.distKm.toFixed(1) + ' km away)\n' +
+          'Note: routing uses this road as the start point, not your exact GPS position.';
+        info.style.display = 'block';
+      },
+      function(err) {
+        btn.disabled = false;
+        var msg;
+        switch (err.code) {
+          case err.PERMISSION_DENIED:
+            msg = 'Location access denied — please select a road manually from the dropdown.';
+            break;
+          case err.POSITION_UNAVAILABLE:
+            msg = 'Location unavailable — GPS signal could not be obtained.';
+            break;
+          case err.TIMEOUT:
+            msg = 'Location request timed out — please try again or select manually.';
+            break;
+          default:
+            msg = 'Location error: ' + err.message;
+        }
+        info.textContent = '⚠ ' + msg;
+        info.className = 'error';
+        info.style.display = 'block';
+      },
+      { timeout: 10000, maximumAge: 60000 }
+    );
+  });
+  // ─────────────────────────────────────────────────────────────────────────────
 
   async function plotPredictedSpeeds() {
     const res = await fetch(API_BASE + '/predict', { method: 'POST' });
