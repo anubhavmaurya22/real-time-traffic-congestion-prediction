@@ -7,6 +7,8 @@
   <meta name="description" content="Live traffic congestion prediction and dynamic route optimization for Bangalore using AI-powered transit intelligence."/>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+  <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
   <script type="module" src="firebase-init.js"></script>
@@ -123,6 +125,8 @@
     .leaflet-popup-content-wrapper{background:var(--surface-low)!important;border:1px solid var(--outline-var)!important;border-radius:4px!important;color:var(--on-surface)!important;font-family:var(--font-mono)!important;font-size:11px!important;box-shadow:0 4px 24px rgba(0,0,0,.6)!important;}
     .leaflet-popup-tip{background:var(--surface-low)!important;}
     .leaflet-popup-close-button{color:var(--on-surface-var)!important;}
+    /* Hide Leaflet Routing Machine default itinerary UI widget/panel */
+    .leaflet-routing-container, .leaflet-routing-alt { display: none !important; }
   </style>
 </head>
 <body>
@@ -304,6 +308,8 @@
   let sensorMarkers = [];
   let routeLine = null;
   let staticRouteLine = null;
+  let routeControl = null;
+  let staticRouteControl = null;
 
   function speedColor(kmh) {
     if (kmh > 80) return '#22c55e';
@@ -501,17 +507,70 @@
         return;
       }
       const data = await res.json();
-      if (routeLine)       map.removeLayer(routeLine);
-      if (staticRouteLine) map.removeLayer(staticRouteLine);
+      if (routeLine)          { map.removeLayer(routeLine); routeLine = null; }
+      if (staticRouteLine)    { map.removeLayer(staticRouteLine); staticRouteLine = null; }
+      if (routeControl)       { try { map.removeControl(routeControl); } catch(e){} routeControl = null; }
+      if (staticRouteControl) { try { map.removeControl(staticRouteControl); } catch(e){} staticRouteControl = null; }
+
       const idToLatLng = function(id) {
         const s = sensorLocations.find(function(s){ return s.index === id; });
         return s ? [s.latitude, s.longitude] : null;
       };
       const predCoords   = data.predicted_route.map(idToLatLng).filter(Boolean);
       const staticCoords = data.static_route.map(idToLatLng).filter(Boolean);
-      routeLine       = L.polyline(predCoords,   { color: '#f2ca50', weight: 4, opacity: 0.9 }).addTo(map);
-      staticRouteLine = L.polyline(staticCoords, { color: '#99907c', weight: 2.5, dashArray: '6,6', opacity: 0.6 }).addTo(map);
-      map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+
+      // NOTE: OSRM's public demo server (router.project-osrm.org) has usage limits
+      // and is intended for demo/testing purposes only. For production deployment at scale,
+      // replace with a paid routing service (e.g. Mapbox, Google Directions) or a self-hosted OSRM instance.
+
+      if (window.L && L.Routing && L.Routing.control && predCoords.length >= 2 && staticCoords.length >= 2) {
+        // 1. Predicted Route (Gold, solid line following actual roads via OSRM)
+        const predWaypoints = predCoords.map(c => L.latLng(c[0], c[1]));
+        routeControl = L.Routing.control({
+          waypoints: predWaypoints,
+          router: L.Routing.osrmv1({
+            serviceUrl: 'https://router.project-osrm.org/route/v1'
+          }),
+          lineOptions: {
+            styles: [{ color: '#f2ca50', opacity: 0.9, weight: 5 }],
+            addWaypoints: false
+          },
+          addWaypoints: false,
+          draggableWaypoints: false,
+          fitSelectedRoutes: true,
+          show: false,
+          createMarker: function() { return null; }
+        }).addTo(map);
+
+        routeControl.on('routesfound', function(e) {
+          if (e.routes && e.routes.length > 0) {
+            map.fitBounds(L.latLngBounds(e.routes[0].coordinates), { padding: [40, 40] });
+          }
+        });
+
+        // 2. Static Route (Gray, dashed line following actual roads via OSRM)
+        const staticWaypoints = staticCoords.map(c => L.latLng(c[0], c[1]));
+        staticRouteControl = L.Routing.control({
+          waypoints: staticWaypoints,
+          router: L.Routing.osrmv1({
+            serviceUrl: 'https://router.project-osrm.org/route/v1'
+          }),
+          lineOptions: {
+            styles: [{ color: '#99907c', opacity: 0.7, weight: 3, dashArray: '6,6' }],
+            addWaypoints: false
+          },
+          addWaypoints: false,
+          draggableWaypoints: false,
+          fitSelectedRoutes: false,
+          show: false,
+          createMarker: function() { return null; }
+        }).addTo(map);
+      } else {
+        // Fallback straight-line polyline if routing engine is unavailable
+        routeLine       = L.polyline(predCoords,   { color: '#f2ca50', weight: 4, opacity: 0.9 }).addTo(map);
+        staticRouteLine = L.polyline(staticCoords, { color: '#99907c', weight: 2.5, dashArray: '6,6', opacity: 0.6 }).addTo(map);
+        map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+      }
       const imp = data.improvement_pct.toFixed(1);
       document.getElementById('efficiencyLabel').innerHTML = 'Improvement: <strong>' + imp + '%</strong>';
       document.getElementById('etaBadge').textContent = '+' + imp + '%';
