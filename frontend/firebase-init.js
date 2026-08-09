@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// STREETFLOW LIVE — Firebase Auth + Realtime Database + Firestore + App Check Init
+// STREETFLOW LIVE — Firebase Auth + App Check Init (Hosting Only)
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js';
@@ -11,22 +11,6 @@ import {
   onAuthStateChanged
 } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js';
 import {
-  getDatabase,
-  ref,
-  set,
-  get,
-  child,
-  update,
-  onValue
-} from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js';
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  updateDoc
-} from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js';
-import {
   initializeAppCheck,
   ReCaptchaV3Provider
 } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-app-check.js';
@@ -35,7 +19,6 @@ import {
 const firebaseConfig = {
   apiKey:            "AIzaSyDJn67yUdialq8dwh6-fVidva3e1UCj1HU",
   authDomain:        "traff2ic-detector.firebaseapp.com",
-  databaseURL:       "https://traff2ic-detector-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId:         "traff2ic-detector",
   storageBucket:     "traff2ic-detector.firebasestorage.app",
   messagingSenderId: "1055184397335",
@@ -49,8 +32,6 @@ const RECAPTCHA_V3_SITE_KEY = "YOUR_RECAPTCHA_V3_SITE_KEY";
 // ── Initialise Firebase Services ────────────────────────────────────────────
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getDatabase(app);
-const firestore = getFirestore(app);
 
 // ── App Check — environment-aware provider ──────────────────────────────────
 let appCheck = null;
@@ -59,7 +40,7 @@ const _isLocalDev = (location.hostname === 'localhost' || location.hostname === 
 try {
   if (_isLocalDev) {
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-    console.log('[STREETFLOW APP CHECK] Localhost detected — Debug Provider flag set. Check browser console for debug token on first request.');
+    console.log('[STREETFLOW APP CHECK] Localhost detected — Debug Provider flag set.');
   }
 
   if (RECAPTCHA_V3_SITE_KEY && RECAPTCHA_V3_SITE_KEY !== "YOUR_RECAPTCHA_V3_SITE_KEY") {
@@ -77,44 +58,20 @@ try {
 window.__streetflow_firebase = {
   app,
   auth,
-  db,
-  firestore,
   appCheck,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged,
-  ref,
-  set,
-  get,
-  child,
-  update,
-  onValue,
-  doc,
-  setDoc,
-  getDoc,
-  updateDoc
+  onAuthStateChanged
 };
 
 // ── Export ES Module interface ──────────────────────────────────────────────
 export {
   app,
   auth,
-  db,
-  firestore,
   appCheck,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged,
-  ref,
-  set,
-  get,
-  child,
-  update,
-  onValue,
-  doc,
-  setDoc,
-  getDoc,
-  updateDoc
+  onAuthStateChanged
 };

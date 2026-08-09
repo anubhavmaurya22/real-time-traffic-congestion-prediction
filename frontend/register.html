@@ -47,15 +47,8 @@
 <script type="module">
   import {
     auth,
-    db,
-    firestore,
-    createUserWithEmailAndPassword,
-    ref,
-    set,
-    doc,
-    setDoc
+    createUserWithEmailAndPassword
   } from './firebase-init.js';
-  import { API_BASE } from './api-config.js';
 
   document.getElementById('registerForm').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -95,59 +88,11 @@
     btn.textContent = 'Creating Account...';
 
     try {
-      console.log('[REGISTER] [AUTH] Creating Firebase Auth account for:', email);
-      // 1. Firebase Authentication
+      console.log('[REGISTER] Creating Firebase Auth account for:', email);
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      console.log('[REGISTER] [AUTH SUCCESS] User created. UID:', user.uid);
+      console.log('[REGISTER SUCCESS] User created. UID:', userCredential.user.uid);
 
-      // 2. Obtain Firebase ID Token & Sync Cloud SQL via Backend API
-      const idToken = await user.getIdToken();
-      console.log('[REGISTER] [CLOUD SQL] Syncing to Cloud SQL backend...');
-
-      const syncResponse = await fetch(`${API_BASE}/api/users/sync`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({
-          uid: user.uid,
-          name: name,
-          email: user.email,
-          role: 'Operator / Analyst'
-        })
-      });
-
-      if (!syncResponse.ok) {
-        const errorData = await syncResponse.json().catch(() => ({ detail: 'Backend server error' }));
-        console.error('[REGISTER] [CLOUD SQL ERROR]', errorData);
-      } else {
-        const syncResult = await syncResponse.json();
-        console.log('[REGISTER] [CLOUD SQL SUCCESS] User record synced with Cloud SQL:', syncResult);
-      }
-
-      // 3. Realtime Database Profile Sync at `users/${user.uid}`
-      const userPath = `users/${user.uid}`;
-      const userData = {
-        uid: user.uid,
-        name: name,
-        email: user.email,
-        role: 'Operator / Analyst',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-      console.log('[REGISTER] [RTDB] Writing realtime profile to path:', userPath);
-      await set(ref(db, userPath), userData);
-      console.log('[REGISTER] [RTDB SUCCESS] Profile written successfully.');
-
-      // 4. Cloud Firestore Document Sync at `users/${user.uid}`
-      console.log('[REGISTER] [FIRESTORE] Writing user document to Cloud Firestore...');
-      await setDoc(doc(firestore, "users", user.uid), userData);
-      console.log('[REGISTER] [FIRESTORE SUCCESS] Firestore document created.');
-
-      // 5. Redirect to dashboard after all persistence operations complete
+      // Redirect to dashboard
       window.location.href = 'dashboard.html';
     } catch (error) {
       console.error('[REGISTER ERROR]', error);
@@ -161,8 +106,6 @@
         msg = 'Password should be at least 6 characters.';
       } else if (error.code === 'auth/invalid-email') {
         msg = 'Invalid email address format.';
-      } else if (error.code === 'PERMISSION_DENIED') {
-        msg = 'Database write permission denied by security rules.';
       }
       errEl.textContent = msg;
     }

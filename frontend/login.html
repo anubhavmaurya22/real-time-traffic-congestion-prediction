@@ -37,18 +37,8 @@
 <script type="module">
   import {
     auth,
-    db,
-    firestore,
-    signInWithEmailAndPassword,
-    ref,
-    get,
-    child,
-    set,
-    doc,
-    getDoc,
-    setDoc
+    signInWithEmailAndPassword
   } from './firebase-init.js';
-  import { API_BASE } from './api-config.js';
 
   document.getElementById('loginForm').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -72,81 +62,11 @@
     btn.textContent = 'Signing In...';
 
     try {
-      console.log('[LOGIN] [AUTH] Authenticating user:', email);
-      // 1. Firebase Authentication
+      console.log('[LOGIN] Authenticating user:', email);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      console.log('[LOGIN] [AUTH SUCCESS] User signed in. UID:', user.uid);
+      console.log('[LOGIN SUCCESS] Signed in. UID:', userCredential.user.uid);
 
-      // 2. Obtain Firebase ID Token & sync with Cloud SQL backend
-      try {
-        const idToken = await user.getIdToken();
-        const syncResponse = await fetch(`${API_BASE}/api/users/sync`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`
-          },
-          body: JSON.stringify({
-            uid: user.uid,
-            name: user.displayName || user.email.split('@')[0],
-            email: user.email,
-            role: 'Operator / Analyst'
-          })
-        });
-        if (syncResponse.ok) {
-          const syncResult = await syncResponse.json();
-          console.log('[LOGIN] [CLOUD SQL SUCCESS] User record verified in Cloud SQL:', syncResult);
-        }
-      } catch (backendErr) {
-        console.warn('[LOGIN] [CLOUD SQL NOTICE] Backend sync check notice:', backendErr);
-      }
-
-      // 3. Read Realtime Database profile at `users/${user.uid}`
-      const userPath = `users/${user.uid}`;
-      console.log('[LOGIN] [RTDB] Reading profile from path:', userPath);
-      const snapshot = await get(child(ref(db), userPath));
-
-      if (snapshot.exists()) {
-        console.log('[LOGIN] [RTDB SUCCESS] Profile loaded from Realtime Database:', snapshot.val());
-      } else {
-        console.warn('[LOGIN] [RTDB NOTICE] Profile missing in RTDB. Recovering profile...');
-        const recoveredData = {
-          uid: user.uid,
-          name: user.displayName || user.email.split('@')[0],
-          email: user.email,
-          role: 'Operator / Analyst',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        await set(ref(db, userPath), recoveredData);
-        console.log('[LOGIN] [RTDB SUCCESS] Profile recovered at path:', userPath);
-      }
-
-      // 4. Cloud Firestore Sync / Recovery at `users/${user.uid}`
-      try {
-        const fsDocRef = doc(firestore, "users", user.uid);
-        const fsSnapshot = await getDoc(fsDocRef);
-        if (fsSnapshot.exists()) {
-          console.log('[LOGIN] [FIRESTORE SUCCESS] User document found in Firestore:', fsSnapshot.data());
-        } else {
-          console.warn('[LOGIN] [FIRESTORE NOTICE] Document missing in Firestore. Recovering...');
-          const recoveredFsData = {
-            uid: user.uid,
-            name: user.displayName || user.email.split('@')[0],
-            email: user.email,
-            role: 'Operator / Analyst',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-          await setDoc(fsDocRef, recoveredFsData);
-          console.log('[LOGIN] [FIRESTORE SUCCESS] Document recovered in Firestore.');
-        }
-      } catch (fsErr) {
-        console.warn('[LOGIN] [FIRESTORE NOTICE] Firestore sync notice:', fsErr);
-      }
-
-      // 5. Redirect to dashboard
+      // Redirect to dashboard
       window.location.href = 'dashboard.html';
     } catch (error) {
       console.error('[LOGIN ERROR]', error);
@@ -162,8 +82,6 @@
         msg = 'Invalid email or password.';
       } else if (error.code === 'auth/invalid-email') {
         msg = 'Invalid email address format.';
-      } else if (error.code === 'PERMISSION_DENIED') {
-        msg = 'Database read permission denied by security rules.';
       }
       errEl.textContent = msg;
     }
