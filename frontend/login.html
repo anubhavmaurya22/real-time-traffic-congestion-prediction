@@ -38,11 +38,15 @@
   import {
     auth,
     db,
+    firestore,
     signInWithEmailAndPassword,
     ref,
     get,
     child,
-    set
+    set,
+    doc,
+    getDoc,
+    setDoc
   } from './firebase-init.js';
   import { API_BASE } from './api-config.js';
 
@@ -119,7 +123,30 @@
         console.log('[LOGIN] [RTDB SUCCESS] Profile recovered at path:', userPath);
       }
 
-      // 4. Redirect to dashboard
+      // 4. Cloud Firestore Sync / Recovery at `users/${user.uid}`
+      try {
+        const fsDocRef = doc(firestore, "users", user.uid);
+        const fsSnapshot = await getDoc(fsDocRef);
+        if (fsSnapshot.exists()) {
+          console.log('[LOGIN] [FIRESTORE SUCCESS] User document found in Firestore:', fsSnapshot.data());
+        } else {
+          console.warn('[LOGIN] [FIRESTORE NOTICE] Document missing in Firestore. Recovering...');
+          const recoveredFsData = {
+            uid: user.uid,
+            name: user.displayName || user.email.split('@')[0],
+            email: user.email,
+            role: 'Operator / Analyst',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          await setDoc(fsDocRef, recoveredFsData);
+          console.log('[LOGIN] [FIRESTORE SUCCESS] Document recovered in Firestore.');
+        }
+      } catch (fsErr) {
+        console.warn('[LOGIN] [FIRESTORE NOTICE] Firestore sync notice:', fsErr);
+      }
+
+      // 5. Redirect to dashboard
       window.location.href = 'dashboard.html';
     } catch (error) {
       console.error('[LOGIN ERROR]', error);

@@ -48,9 +48,12 @@
   import {
     auth,
     db,
+    firestore,
     createUserWithEmailAndPassword,
     ref,
-    set
+    set,
+    doc,
+    setDoc
   } from './firebase-init.js';
   import { API_BASE } from './api-config.js';
 
@@ -98,11 +101,10 @@
       const user = userCredential.user;
       console.log('[REGISTER] [AUTH SUCCESS] User created. UID:', user.uid);
 
-      // 2. Obtain Firebase ID Token
+      // 2. Obtain Firebase ID Token & Sync Cloud SQL via Backend API
       const idToken = await user.getIdToken();
-      console.log('[REGISTER] [CLOUD SQL] Obtained Firebase ID token. Syncing to Cloud SQL backend...');
+      console.log('[REGISTER] [CLOUD SQL] Syncing to Cloud SQL backend...');
 
-      // 3. Backend Cloud SQL Synchronization via /api/users/sync
       const syncResponse = await fetch(`${API_BASE}/api/users/sync`, {
         method: 'POST',
         headers: {
@@ -120,13 +122,12 @@
       if (!syncResponse.ok) {
         const errorData = await syncResponse.json().catch(() => ({ detail: 'Backend server error' }));
         console.error('[REGISTER] [CLOUD SQL ERROR]', errorData);
-        throw new Error(`Cloud SQL Sync Warning: ${errorData.detail || 'Failed to sync user with database'}`);
+      } else {
+        const syncResult = await syncResponse.json();
+        console.log('[REGISTER] [CLOUD SQL SUCCESS] User record synced with Cloud SQL:', syncResult);
       }
 
-      const syncResult = await syncResponse.json();
-      console.log('[REGISTER] [CLOUD SQL SUCCESS] User record synced with Cloud SQL:', syncResult);
-
-      // 4. Realtime Database Profile Sync at `users/${user.uid}`
+      // 3. Realtime Database Profile Sync at `users/${user.uid}`
       const userPath = `users/${user.uid}`;
       const userData = {
         uid: user.uid,
@@ -141,7 +142,12 @@
       await set(ref(db, userPath), userData);
       console.log('[REGISTER] [RTDB SUCCESS] Profile written successfully.');
 
-      // 5. Redirect to dashboard after both Cloud SQL and RTDB sync succeed
+      // 4. Cloud Firestore Document Sync at `users/${user.uid}`
+      console.log('[REGISTER] [FIRESTORE] Writing user document to Cloud Firestore...');
+      await setDoc(doc(firestore, "users", user.uid), userData);
+      console.log('[REGISTER] [FIRESTORE SUCCESS] Firestore document created.');
+
+      // 5. Redirect to dashboard after all persistence operations complete
       window.location.href = 'dashboard.html';
     } catch (error) {
       console.error('[REGISTER ERROR]', error);

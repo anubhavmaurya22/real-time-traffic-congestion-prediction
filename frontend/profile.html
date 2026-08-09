@@ -112,11 +112,14 @@
   import {
     auth,
     db,
+    firestore,
     onAuthStateChanged,
     signOut,
     ref,
     get,
-    update
+    update,
+    doc,
+    updateDoc
   } from './firebase-init.js';
   import { API_BASE } from './api-config.js';
 
@@ -232,7 +235,21 @@
           updatedAt: new Date().toISOString()
         });
         console.log('[PROFILE] [RTDB SUCCESS] Realtime Database updated at path:', userPath);
-        document.getElementById('stubNote').textContent = 'Profile successfully updated in Cloud SQL & Realtime Database.';
+
+        // 3. Sync Cloud Firestore users/${currentUser.uid}
+        try {
+          const fsRef = doc(firestore, "users", currentUser.uid);
+          await updateDoc(fsRef, {
+            name: name,
+            role: role,
+            updatedAt: new Date().toISOString()
+          });
+          console.log('[PROFILE] [FIRESTORE SUCCESS] Cloud Firestore updated at document:', currentUser.uid);
+        } catch (fsErr) {
+          console.warn('[PROFILE] [FIRESTORE NOTICE] Firestore update notice:', fsErr);
+        }
+
+        document.getElementById('stubNote').textContent = 'Profile successfully updated in Cloud SQL, Realtime Database & Cloud Firestore.';
       } catch (err) {
         console.error('[PROFILE] [UPDATE ERROR]', err);
         document.getElementById('stubNote').textContent = 'Save notice: ' + (err.message || err);

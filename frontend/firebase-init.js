@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// STREETFLOW LIVE — Firebase Auth + Realtime Database + App Check Init
+// STREETFLOW LIVE — Firebase Auth + Realtime Database + Firestore + App Check Init
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js';
@@ -20,6 +20,13 @@ import {
   onValue
 } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js';
 import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc
+} from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js';
+import {
   initializeAppCheck,
   ReCaptchaV3Provider
 } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-app-check.js';
@@ -37,13 +44,13 @@ const firebaseConfig = {
 };
 
 // ── reCAPTCHA v3 public site key ────────────────────────────────────────────
-// Replace with your public reCAPTCHA v3 Site Key from Firebase Console → App Check
 const RECAPTCHA_V3_SITE_KEY = "YOUR_RECAPTCHA_V3_SITE_KEY";
 
-// ── Initialise Firebase App, Auth & Realtime Database ───────────────────────
+// ── Initialise Firebase Services ────────────────────────────────────────────
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
+const firestore = getFirestore(app);
 
 // ── App Check — environment-aware provider ──────────────────────────────────
 let appCheck = null;
@@ -71,6 +78,7 @@ window.__streetflow_firebase = {
   app,
   auth,
   db,
+  firestore,
   appCheck,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -81,7 +89,11 @@ window.__streetflow_firebase = {
   get,
   child,
   update,
-  onValue
+  onValue,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc
 };
 
 // ── Export ES Module interface ──────────────────────────────────────────────
@@ -89,6 +101,7 @@ export {
   app,
   auth,
   db,
+  firestore,
   appCheck,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -99,5 +112,9 @@ export {
   get,
   child,
   update,
-  onValue
+  onValue,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc
 };
