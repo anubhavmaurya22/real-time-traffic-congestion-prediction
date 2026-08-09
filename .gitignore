@@ -1,6 +1,36 @@
-# =============================================================
-# Python
-# =============================================================
+# ==============================================================================
+# STREETFLOW LIVE — Git Ignore Rules
+# ==============================================================================
+
+# ── Environment & Local Secrets (NEVER commit these) ───────────────────────────
+.env
+.env.*
+!.env.example
+*.env
+
+# ── Service Accounts & Credential JSON Files ──────────────────────────────────
+serviceAccountKey.json
+firebase-adminsdk*.json
+*service-account*.json
+*service_account*.json
+*credentials*.json
+*secret*.json
+*.key
+*.p12
+*.pfx
+
+# ── AWS & SSH Credentials ─────────────────────────────────────────────────────
+*.pem
+*.ppk
+*accessKeys.csv
+*_accessKeys.csv
+aws-credentials*
+.aws/
+streetflow-key.pem
+deploy/streetflow-key.pem
+deploy/*.pem
+
+# ── Python / Virtual Environments ─────────────────────────────────────────────
 __pycache__/
 *.pyc
 *.pyo
@@ -10,38 +40,13 @@ venv/
 venv_new/
 traffic_env/
 
-# =============================================================
-# Environment & secrets
-# =============================================================
-.env
-.env.*
-*.env
-
-# =============================================================
-# AWS credentials & keys  ← NEVER commit these
-# =============================================================
-*.pem
-*.ppk
-*accessKeys.csv
-*_accessKeys.csv
-aws-credentials*
-.aws/
-
-# =============================================================
-# OS
-# =============================================================
+# ── OS & IDE Temporary Files ──────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
-
-# =============================================================
-# IDE
-# =============================================================
 .vscode/
 .idea/
 
-# =============================================================
-# Large / generated data files  (exceed GitHub 100 MB limit)
-# =============================================================
+# ── Large Data & Model Artifacts ──────────────────────────────────────────────
 *.npy
 *.pt
 *.pth
@@ -52,31 +57,19 @@ data/raw/
 api/data/
 model/data/
 
-# =============================================================
-# Firebase CLI artifacts  (auto-generated, not source code)
-# =============================================================
+# ── Firebase CLI Temporary Logs & Cache ───────────────────────────────────────
 .firebase/
 firebase-debug.log
 firebase-debug.*.log
 ui-debug.log
 
-# NOTE: firebase.json, firestore.rules, firestore.indexes.json
-#       and the dataconnect/ folder ARE tracked intentionally.
-
-# =============================================================
-# Frontend — duplicated assets (canonical copy lives in data/)
-# =============================================================
+# ── Frontend Duplicated Assets ────────────────────────────────────────────────
 frontend/bangalore_road_locations.csv
 
-# =============================================================
-# Deploy artifacts
-# =============================================================
-deploy/streetflow-key.pem
-streetflow-key.pem
-deploy/*.pem
-
-# =============================================================
-# Misc junk / temp files
-# =============================================================
+# ── Logs & Misc Temporary Files ───────────────────────────────────────────────
 *.log
 nohup.out
+
+# NOTE: Legitimate project configuration files MUST remain tracked:
+#       firebase.json, database.rules.json, firestore.rules,
+#       firestore.indexes.json, deploy/cf-config.json, dataconnect/
