@@ -14,7 +14,7 @@ train_dataset, remaining = temporal_signal_split(dataset, train_ratio=0.7)
 val_dataset, test_dataset = temporal_signal_split(remaining, train_ratio=1/3)
 
 sample = next(iter(train_dataset))
-model = TrafficForecastModel(in_channels=sample.x.shape[1], periods=12)
+model = TrafficForecastModel(in_channels=sample.x.shape[1], in_periods=12, out_periods=12)
 model.load_state_dict(torch.load(os.path.join(os.path.dirname(__file__), "model", "best_model.pt")))
 model.eval()
 

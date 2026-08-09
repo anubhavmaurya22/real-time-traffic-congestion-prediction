@@ -16,7 +16,7 @@ train_slice = list(train_dataset)[:300]
 val_slice = list(val_dataset)[:100]
 
 sample = train_slice[0]
-model = TrafficForecastModel(in_channels=sample.x.shape[1], periods=12)
+model = TrafficForecastModel(in_channels=sample.x.shape[1], in_periods=12, out_periods=12)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
 print(f"Training on {len(train_slice)} windows, validating on {len(val_slice)}\n")

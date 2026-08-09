@@ -73,7 +73,7 @@ if __name__ == "__main__":
     _, test_dataset = temporal_signal_split(remaining, train_ratio=1 / 3)
 
     sample = next(iter(train_dataset))
-    model = TrafficForecastModel(in_channels=sample.x.shape[1], periods=12)
+    model = TrafficForecastModel(in_channels=sample.x.shape[1], in_periods=12, out_periods=12)
     model.load_state_dict(torch.load("../model/best_model.pt"))
     model.eval()
 

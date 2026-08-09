@@ -102,7 +102,7 @@ if __name__ == "__main__":
     val_dataset, test_dataset = temporal_signal_split(remaining, train_ratio=1 / 3)
 
     sample = next(iter(train_dataset))
-    model = TrafficForecastModel(in_channels=sample.x.shape[1], periods=12)
+    model = TrafficForecastModel(in_channels=sample.x.shape[1], in_periods=12, out_periods=12)
 
     print("Starting training...\n")
     model, best_val_loss = train(model, train_dataset, val_dataset, epochs=30)
