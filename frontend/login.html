@@ -41,8 +41,10 @@
     signInWithEmailAndPassword,
     ref,
     get,
-    child
+    child,
+    set
   } from './firebase-init.js';
+  import { API_BASE } from './api-config.js';
 
   document.getElementById('loginForm').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -66,24 +68,58 @@
     btn.textContent = 'Signing In...';
 
     try {
-      console.log('[LOGIN] Authenticating user:', email);
+      console.log('[LOGIN] [AUTH] Authenticating user:', email);
       // 1. Firebase Authentication
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      console.log('[LOGIN SUCCESS] Auth user signed in. UID:', user.uid);
+      console.log('[LOGIN] [AUTH SUCCESS] User signed in. UID:', user.uid);
 
-      // 2. Fetch User Document from Realtime Database at `users/${user.uid}`
+      // 2. Obtain Firebase ID Token & sync with Cloud SQL backend
+      try {
+        const idToken = await user.getIdToken();
+        const syncResponse = await fetch(`${API_BASE}/api/users/sync`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify({
+            uid: user.uid,
+            name: user.displayName || user.email.split('@')[0],
+            email: user.email,
+            role: 'Operator / Analyst'
+          })
+        });
+        if (syncResponse.ok) {
+          const syncResult = await syncResponse.json();
+          console.log('[LOGIN] [CLOUD SQL SUCCESS] User record verified in Cloud SQL:', syncResult);
+        }
+      } catch (backendErr) {
+        console.warn('[LOGIN] [CLOUD SQL NOTICE] Backend sync check notice:', backendErr);
+      }
+
+      // 3. Read Realtime Database profile at `users/${user.uid}`
       const userPath = `users/${user.uid}`;
-      console.log('[LOGIN DB READ] Fetching profile from path:', userPath);
+      console.log('[LOGIN] [RTDB] Reading profile from path:', userPath);
       const snapshot = await get(child(ref(db), userPath));
 
       if (snapshot.exists()) {
-        console.log('[LOGIN DB SUCCESS] User profile retrieved from Realtime Database:', snapshot.val());
+        console.log('[LOGIN] [RTDB SUCCESS] Profile loaded from Realtime Database:', snapshot.val());
       } else {
-        console.warn('[LOGIN DB WARNING] User authenticated, but no database record found at path:', userPath);
+        console.warn('[LOGIN] [RTDB NOTICE] Profile missing in RTDB. Recovering profile...');
+        const recoveredData = {
+          uid: user.uid,
+          name: user.displayName || user.email.split('@')[0],
+          email: user.email,
+          role: 'Operator / Analyst',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        await set(ref(db, userPath), recoveredData);
+        console.log('[LOGIN] [RTDB SUCCESS] Profile recovered at path:', userPath);
       }
 
-      // 3. Redirect to dashboard
+      // 4. Redirect to dashboard
       window.location.href = 'dashboard.html';
     } catch (error) {
       console.error('[LOGIN ERROR]', error);

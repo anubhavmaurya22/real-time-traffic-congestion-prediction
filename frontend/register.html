@@ -52,6 +52,7 @@
     ref,
     set
   } from './firebase-init.js';
+  import { API_BASE } from './api-config.js';
 
   document.getElementById('registerForm').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -91,13 +92,41 @@
     btn.textContent = 'Creating Account...';
 
     try {
-      console.log('[REGISTER] Creating Firebase Auth account for:', email);
+      console.log('[REGISTER] [AUTH] Creating Firebase Auth account for:', email);
       // 1. Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      console.log('[REGISTER SUCCESS] Firebase Auth user created. UID:', user.uid);
+      console.log('[REGISTER] [AUTH SUCCESS] User created. UID:', user.uid);
 
-      // 2. Write User Document to Realtime Database at `users/${user.uid}`
+      // 2. Obtain Firebase ID Token
+      const idToken = await user.getIdToken();
+      console.log('[REGISTER] [CLOUD SQL] Obtained Firebase ID token. Syncing to Cloud SQL backend...');
+
+      // 3. Backend Cloud SQL Synchronization via /api/users/sync
+      const syncResponse = await fetch(`${API_BASE}/api/users/sync`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          uid: user.uid,
+          name: name,
+          email: user.email,
+          role: 'Operator / Analyst'
+        })
+      });
+
+      if (!syncResponse.ok) {
+        const errorData = await syncResponse.json().catch(() => ({ detail: 'Backend server error' }));
+        console.error('[REGISTER] [CLOUD SQL ERROR]', errorData);
+        throw new Error(`Cloud SQL Sync Warning: ${errorData.detail || 'Failed to sync user with database'}`);
+      }
+
+      const syncResult = await syncResponse.json();
+      console.log('[REGISTER] [CLOUD SQL SUCCESS] User record synced with Cloud SQL:', syncResult);
+
+      // 4. Realtime Database Profile Sync at `users/${user.uid}`
       const userPath = `users/${user.uid}`;
       const userData = {
         uid: user.uid,
@@ -108,11 +137,11 @@
         updatedAt: new Date().toISOString()
       };
 
-      console.log('[REGISTER DB WRITE] Target path:', userPath, '| Data:', userData);
+      console.log('[REGISTER] [RTDB] Writing realtime profile to path:', userPath);
       await set(ref(db, userPath), userData);
-      console.log('[REGISTER DB SUCCESS] Database record created successfully at:', userPath);
+      console.log('[REGISTER] [RTDB SUCCESS] Profile written successfully.');
 
-      // 3. Redirect to dashboard ONLY after database write succeeds
+      // 5. Redirect to dashboard after both Cloud SQL and RTDB sync succeed
       window.location.href = 'dashboard.html';
     } catch (error) {
       console.error('[REGISTER ERROR]', error);

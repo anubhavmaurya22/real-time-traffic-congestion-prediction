@@ -118,6 +118,7 @@
     get,
     update
   } from './firebase-init.js';
+  import { API_BASE } from './api-config.js';
 
   let currentUser = null;
   let prevValues  = {};
@@ -127,7 +128,7 @@
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       currentUser = user;
-      console.log('[PROFILE AUTH] Logged in as:', user.email, '| UID:', user.uid);
+      console.log('[PROFILE] [AUTH] Logged in as:', user.email, '| UID:', user.uid);
       document.getElementById('pEmail').value = user.email || '';
 
       // Read Realtime Database record `users/${user.uid}`
@@ -135,7 +136,7 @@
         const snapshot = await get(ref(db, `users/${user.uid}`));
         if (snapshot.exists()) {
           const data = snapshot.val();
-          console.log('[PROFILE DB READ SUCCESS] Data from users/' + user.uid + ':', data);
+          console.log('[PROFILE] [RTDB SUCCESS] Profile loaded from users/' + user.uid + ':', data);
 
           const name = data.name || user.displayName || user.email.split('@')[0];
           const role = data.role || 'Operator / Analyst';
@@ -147,26 +148,25 @@
           document.getElementById('pRole').value = role;
           document.getElementById('displayRole').textContent = role;
 
-          document.getElementById('stubNote').textContent = 'Profile synced live from Realtime Database (path: users/' + user.uid + ').';
+          document.getElementById('stubNote').textContent = 'Profile synced live with Cloud SQL & Realtime Database.';
         } else {
-          console.warn('[PROFILE DB READ] No record found at users/' + user.uid + '. Using session default.');
+          console.warn('[PROFILE] [RTDB NOTICE] No RTDB record found at users/' + user.uid + '. Using session default.');
           const name = user.displayName || user.email.split('@')[0];
           document.getElementById('pName').value = name;
           document.getElementById('displayName').textContent = name;
           document.getElementById('avatarInit').textContent = name.charAt(0).toUpperCase();
-          document.getElementById('stubNote').textContent = 'Loaded from Auth session. Click Edit to save to Realtime Database.';
+          document.getElementById('stubNote').textContent = 'Loaded from Auth session. Click Edit to sync profile to Cloud SQL & Realtime Database.';
         }
       } catch (err) {
-        console.error('[PROFILE DB READ ERROR]', err);
+        console.error('[PROFILE] [RTDB ERROR]', err);
         document.getElementById('stubNote').textContent = 'Database error: ' + (err.message || err);
       }
     } else {
-      console.log('[PROFILE AUTH] No authenticated user detected.');
+      console.log('[PROFILE] [AUTH NOTICE] No authenticated user detected.');
       document.getElementById('stubNote').textContent = 'Not signed in. Please sign in or create an account.';
     }
   });
 
-  // Make functions global for inline button onclick handlers
   window.startEdit = function() {
     prevValues = {};
     FIELDS.forEach((id) => {
@@ -180,7 +180,7 @@
     document.getElementById('editBtn').style.display = 'none';
     document.getElementById('saveBtn').style.display = '';
     document.getElementById('cancelBtn').style.display = '';
-    document.getElementById('stubNote').textContent = 'Editing profile... Click Save to write to Realtime Database.';
+    document.getElementById('stubNote').textContent = 'Editing profile... Click Save to write to Cloud SQL and Realtime Database.';
   };
 
   window.saveEdit = async function() {
@@ -202,21 +202,43 @@
 
     if (currentUser) {
       try {
-        document.getElementById('stubNote').textContent = 'Saving to Realtime Database...';
+        document.getElementById('stubNote').textContent = 'Saving to Cloud SQL and Realtime Database...';
+        
+        // 1. Sync Cloud SQL backend User record
+        const idToken = await currentUser.getIdToken();
+        const syncResponse = await fetch(`${API_BASE}/api/users/sync`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
+          body: JSON.stringify({
+            uid: currentUser.uid,
+            name: name,
+            email: currentUser.email,
+            role: role
+          })
+        });
+
+        if (syncResponse.ok) {
+          console.log('[PROFILE] [CLOUD SQL SUCCESS] Cloud SQL User record updated.');
+        }
+
+        // 2. Sync Realtime Database users/${currentUser.uid}
         const userPath = `users/${currentUser.uid}`;
         await update(ref(db, userPath), {
           name: name,
           role: role,
           updatedAt: new Date().toISOString()
         });
-        console.log('[PROFILE DB UPDATE SUCCESS] Written to path:', userPath);
-        document.getElementById('stubNote').textContent = 'Profile successfully updated in Realtime Database.';
+        console.log('[PROFILE] [RTDB SUCCESS] Realtime Database updated at path:', userPath);
+        document.getElementById('stubNote').textContent = 'Profile successfully updated in Cloud SQL & Realtime Database.';
       } catch (err) {
-        console.error('[PROFILE DB UPDATE ERROR]', err);
-        document.getElementById('stubNote').textContent = 'Save failed: ' + (err.message || err);
+        console.error('[PROFILE] [UPDATE ERROR]', err);
+        document.getElementById('stubNote').textContent = 'Save notice: ' + (err.message || err);
       }
     } else {
-      document.getElementById('stubNote').textContent = 'Not signed in — cannot write to database.';
+      document.getElementById('stubNote').textContent = 'Not signed in — changes not saved.';
     }
   };
 
@@ -233,7 +255,7 @@
     document.getElementById('stubNote').textContent = 'Edit cancelled.';
   };
 
-  // Attach Sign Out listener to all logout links on page
+  // Attach Sign Out listener
   document.querySelectorAll('a[href="landing.html"]').forEach((link) => {
     if (link.textContent.includes('Sign Out')) {
       link.addEventListener('click', async (e) => {

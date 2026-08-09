@@ -53,6 +53,8 @@ Thumbs.db
 *.ckpt
 *.h5
 *.zip
+*.db
+data/*.db
 data/raw/
 api/data/
 model/data/
