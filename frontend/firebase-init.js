@@ -24,19 +24,20 @@ import {
   ReCaptchaV3Provider
 } from 'https://www.gstatic.com/firebasejs/10.14.0/firebase-app-check.js';
 
-// ── Firebase project configuration ──────────────────────────────────────────
-// ⚠ Make sure apiKey and RECAPTCHA_V3_SITE_KEY match your Firebase Console credentials.
+// ── Firebase project configuration (traff2ic-detector) ──────────────────────
 const firebaseConfig = {
-  apiKey:            "YOUR_FIREBASE_API_KEY",
+  apiKey:            "AIzaSyDJn67yUdialq8dwh6-fVidva3e1UCj1HU",
   authDomain:        "traff2ic-detector.firebaseapp.com",
   databaseURL:       "https://traff2ic-detector-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId:         "traff2ic-detector",
   storageBucket:     "traff2ic-detector.firebasestorage.app",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID",
+  messagingSenderId: "1055184397335",
+  appId:             "1:1055184397335:web:e42d7c3824ee4249022852",
+  measurementId:     "G-3JMDM2NXM8"
 };
 
 // ── reCAPTCHA v3 public site key ────────────────────────────────────────────
+// Replace with your public reCAPTCHA v3 Site Key from Firebase Console → App Check
 const RECAPTCHA_V3_SITE_KEY = "YOUR_RECAPTCHA_V3_SITE_KEY";
 
 // ── Initialise Firebase App, Auth & Realtime Database ───────────────────────
