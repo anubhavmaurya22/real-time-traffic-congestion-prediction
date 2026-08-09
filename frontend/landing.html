@@ -3,73 +3,793 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>STREETFLOW LIVE</title>
-  <meta name="description" content="Real-time traffic congestion prediction and dynamic route optimization for Bangalore."/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="theme.css"/>
+  <title>STREETFLOW LIVE — Real-Time Traffic Congestion Prediction & Route Optimization</title>
+  <meta name="description" content="AI-powered real-time traffic congestion prediction and dynamic route optimization. Graph neural network engine currently live across 16 monitored roads."/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <script type="module" src="firebase-init.js"></script>
   <style>
-    /* Landing-specific overrides */
-    .landing-main {
-      flex: 1; display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 20px; padding: 48px 24px; text-align: center; overflow: auto;
+    /* ─── DESIGN TOKENS ─── */
+    :root {
+      --bg: #0a0a0a;
+      --bg-elevated: #111111;
+      --surface: #161616;
+      --surface-low: #1c1b1b;
+      --surface-container: #201f1f;
+      --surface-high: #2a2a2a;
+      --primary: #f2ca50;
+      --primary-container: #d4af37;
+      --primary-dim: rgba(242,202,80,.12);
+      --primary-glow: rgba(242,202,80,.06);
+      --on-surface: #e5e2e1;
+      --on-surface-var: #b8ad97;
+      --on-primary: #3c2f00;
+      --outline: #99907c;
+      --outline-var: #3d3628;
+      --warm-gray: #8a7e6b;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-sans: 'Inter', sans-serif;
     }
-    .placeholder-tag {
+
+    /* ─── RESET ─── */
+    *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--on-surface);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+    }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--outline-var); border-radius: 2px; }
+
+    /* ─── NAV ─── */
+    .lp-header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 64px;
+      background: rgba(10,10,10,.88);
+      border-bottom: 1px solid var(--outline-var);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 48px;
+    }
+    .lp-header .brand {
+      font-size: 20px; font-weight: 700; letter-spacing: -0.03em;
+      color: var(--primary); text-transform: uppercase; text-decoration: none;
+    }
+    .lp-header .brand span { color: var(--on-surface-var); font-weight: 400; }
+    .lp-header nav { display: flex; gap: 4px; align-items: center; }
+    .lp-header nav a {
+      font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+      letter-spacing: .08em; text-transform: uppercase;
+      color: var(--on-surface-var); text-decoration: none;
+      padding: 6px 14px; border-radius: 2px;
+      transition: background .15s, color .15s;
+    }
+    .lp-header nav a:hover { background: var(--surface-high); color: var(--on-surface); }
+    .lp-header .nav-cta {
+      background: var(--primary); color: var(--on-primary);
+      font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+      letter-spacing: .1em; text-transform: uppercase;
+      padding: 8px 18px; border-radius: 2px; text-decoration: none;
+      transition: opacity .15s;
+    }
+    .lp-header .nav-cta:hover { opacity: .85; }
+
+    /* ─── HERO ─── */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      padding: 120px 32px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+    /* Ambient background glow */
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 20%; left: 50%;
+      transform: translateX(-50%);
+      width: 700px; height: 700px;
+      background: radial-gradient(circle, rgba(242,202,80,.04) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-tag {
+      font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+      letter-spacing: .16em; text-transform: uppercase;
+      color: var(--primary);
+      border: 1px solid var(--outline-var);
+      padding: 6px 16px; border-radius: 2px;
+      margin-bottom: 32px;
+      display: inline-flex; align-items: center; gap: 8px;
+      opacity: 0; transform: translateY(16px);
+      animation: heroFadeIn .8s ease forwards .2s;
+    }
+    .hero-tag .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--primary);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%   { transform: scale(.9); box-shadow: 0 0 0 0 rgba(242,202,80,.6); }
+      70%  { transform: scale(1);  box-shadow: 0 0 0 6px rgba(242,202,80,0); }
+      100% { transform: scale(.9); box-shadow: 0 0 0 0 rgba(242,202,80,0); }
+    }
+    .hero h1 {
+      font-size: clamp(40px, 6vw, 72px);
+      font-weight: 800; line-height: 1.05;
+      letter-spacing: -0.04em;
+      color: var(--on-surface);
+      max-width: 820px;
+      opacity: 0; transform: translateY(20px);
+      animation: heroFadeIn .8s ease forwards .35s;
+    }
+    .hero h1 em {
+      font-style: normal;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      font-size: 17px; line-height: 1.7;
+      color: var(--on-surface-var);
+      max-width: 520px;
+      margin-top: 24px;
+      opacity: 0; transform: translateY(16px);
+      animation: heroFadeIn .8s ease forwards .5s;
+    }
+    .hero-cta-group {
+      display: flex; gap: 12px; margin-top: 40px;
+      opacity: 0; transform: translateY(16px);
+      animation: heroFadeIn .8s ease forwards .65s;
+    }
+    .hero-cta {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+      letter-spacing: .1em; text-transform: uppercase;
+      padding: 14px 28px; border-radius: 2px;
+      text-decoration: none; transition: opacity .15s, transform .1s;
+    }
+    .hero-cta:active { transform: scale(.98); }
+    .hero-cta.primary { background: var(--primary); color: var(--on-primary); }
+    .hero-cta.primary:hover { opacity: .88; }
+    .hero-cta.ghost {
+      background: none; border: 1px solid var(--outline-var);
+      color: var(--on-surface-var);
+    }
+    .hero-cta.ghost:hover { border-color: var(--primary); color: var(--primary); }
+
+    @keyframes heroFadeIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── LIVE DATA TICKER (code/data snippet) ─── */
+    .data-ticker {
+      margin-top: 56px;
+      background: var(--surface);
+      border: 1px solid var(--outline-var);
+      border-radius: 4px;
+      padding: 14px 24px;
+      font-family: var(--font-mono); font-size: 12px;
+      letter-spacing: .03em; color: var(--on-surface-var);
+      max-width: 560px; width: 100%;
+      overflow: hidden; white-space: nowrap;
+      position: relative;
+      opacity: 0; transform: translateY(16px);
+      animation: heroFadeIn .8s ease forwards .8s;
+    }
+    .data-ticker .key { color: var(--warm-gray); }
+    .data-ticker .val { color: var(--primary); }
+    .data-ticker .bracket { color: var(--outline); }
+    .data-ticker::before {
+      content: '';
+      position: absolute; top: 0; left: 0; bottom: 0; width: 3px;
+      background: var(--primary-container);
+    }
+
+    /* ─── FEATURES GRID ─── */
+    .features {
+      padding: 120px 48px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .features-label {
+      font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+      letter-spacing: .16em; text-transform: uppercase;
+      color: var(--primary); margin-bottom: 16px;
+    }
+    .features-heading {
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 700; letter-spacing: -.03em;
+      color: var(--on-surface); line-height: 1.15;
+      max-width: 560px; margin-bottom: 64px;
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+    }
+    .feature-card {
+      background: linear-gradient(180deg, var(--surface) 0%, var(--bg-elevated) 100%);
+      border: 1px solid var(--outline-var);
+      border-radius: 6px;
+      padding: 32px;
+      display: flex; flex-direction: column; gap: 20px;
+      transition: border-color .3s, box-shadow .3s;
+      /* reveal animation */
+      opacity: 0; transform: translateY(32px);
+      transition: opacity .7s ease, transform .7s ease, border-color .3s, box-shadow .3s;
+    }
+    .feature-card.visible {
+      opacity: 1; transform: translateY(0);
+    }
+    .feature-card:hover {
+      border-color: rgba(242,202,80,.3);
+      box-shadow: 0 0 40px rgba(242,202,80,.04);
+    }
+    .feature-card-tag {
       font-family: var(--font-mono); font-size: 10px; font-weight: 500;
       letter-spacing: .14em; text-transform: uppercase;
-      color: var(--outline); border: 1px dashed var(--outline-var);
-      border-radius: 2px; padding: 5px 14px; display: inline-block;
+      color: var(--primary);
     }
-    .placeholder-body {
-      color: var(--on-surface-var); font-family: var(--font-mono);
-      font-size: 12px; letter-spacing: .04em; line-height: 1.9;
-      max-width: 400px;
+    .feature-card h3 {
+      font-size: 20px; font-weight: 600; letter-spacing: -.02em;
+      color: var(--on-surface); line-height: 1.3;
     }
-    .lp-nav { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
-    .lp-nav a {
+    .feature-card p {
+      font-size: 14px; line-height: 1.7;
+      color: var(--on-surface-var);
+    }
+
+    /* ─── DEMO CONTAINERS ─── */
+    .demo-container {
+      width: 100%; height: 140px;
+      background: var(--bg);
+      border: 1px solid var(--outline-var);
+      border-radius: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* --- Demo 1: Animated speed chart --- */
+    .chart-demo { padding: 12px; }
+    .chart-demo canvas { width: 100%; height: 100%; }
+
+    /* --- Demo 2: Route race --- */
+    .route-demo { padding: 16px 20px; }
+    .route-demo svg { width: 100%; height: 100%; }
+
+    /* --- Demo 3: Mini map pulsing --- */
+    .map-demo { position: relative; }
+    .map-demo-grid {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .map-demo svg { width: 100%; height: 100%; }
+
+    /* ─── STATS BAR ─── */
+    .stats-bar {
+      border-top: 1px solid var(--outline-var);
+      border-bottom: 1px solid var(--outline-var);
+      padding: 48px;
+      display: flex; justify-content: center; gap: 80px;
+      flex-wrap: wrap;
+    }
+    .stat {
+      text-align: center;
+      opacity: 0; transform: translateY(20px);
+      transition: opacity .7s ease, transform .7s ease;
+    }
+    .stat.visible { opacity: 1; transform: translateY(0); }
+    .stat-value {
+      font-size: 42px; font-weight: 800; letter-spacing: -.03em;
+      color: var(--primary); line-height: 1;
+    }
+    .stat-label {
       font-family: var(--font-mono); font-size: 11px; font-weight: 500;
-      letter-spacing: .1em; text-transform: uppercase; text-decoration: none;
-      padding: 10px 22px; border-radius: 2px; transition: opacity .15s;
+      letter-spacing: .12em; text-transform: uppercase;
+      color: var(--warm-gray);
+      margin-top: 8px;
     }
-    .a-pri { background: var(--primary); color: var(--on-primary); }
-    .a-sec { border: 1px solid var(--outline-var); color: var(--on-surface-var); }
-    .lp-nav a:hover { opacity: .85; }
+
+    /* ─── FINAL CTA ─── */
+    .final-cta {
+      padding: 120px 48px;
+      text-align: center;
+      display: flex; flex-direction: column;
+      align-items: center;
+      opacity: 0; transform: translateY(20px);
+      transition: opacity .7s ease, transform .7s ease;
+    }
+    .final-cta.visible { opacity: 1; transform: translateY(0); }
+    .final-cta h2 {
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 700; letter-spacing: -.03em;
+      color: var(--on-surface); margin-bottom: 16px;
+    }
+    .final-cta p {
+      font-size: 15px; color: var(--on-surface-var);
+      max-width: 440px; line-height: 1.7;
+      margin-bottom: 36px;
+    }
+
+    /* ─── FOOTER ─── */
+    .lp-footer {
+      padding: 32px 48px;
+      border-top: 1px solid var(--outline-var);
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 16px;
+    }
+    .lp-footer .brand-sm {
+      font-size: 14px; font-weight: 700; letter-spacing: -.02em;
+      color: var(--primary); text-transform: uppercase;
+    }
+    .lp-footer .brand-sm span { color: var(--warm-gray); font-weight: 400; }
+    .lp-footer .copy {
+      font-family: var(--font-mono); font-size: 11px;
+      letter-spacing: .06em; color: var(--warm-gray);
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 768px) {
+      .lp-header { padding: 0 20px; }
+      .lp-header nav { gap: 0; }
+      .lp-header nav a { font-size: 11px; padding: 6px 8px; }
+      .hero { padding: 100px 20px 60px; }
+      .features { padding: 80px 20px; }
+      .feature-grid { grid-template-columns: 1fr; }
+      .stats-bar { gap: 40px; padding: 32px 20px; }
+      .final-cta { padding: 80px 20px; }
+      .lp-footer { padding: 24px 20px; }
+    }
+    @media (max-width: 480px) {
+      .hero-cta-group { flex-direction: column; width: 100%; }
+      .hero-cta { justify-content: center; }
+      .data-ticker { font-size: 10px; padding: 10px 16px; }
+    }
   </style>
 </head>
 <body>
-<div id="app">
-  <header>
-    <div class="header-left">
-      <a class="brand" href="index.html">STREETFLOW<span>_LIVE</span></a>
-      <nav class="top-nav">
-        <a href="dashboard.html">Live Map</a>
-        <a href="simple-map.html">Sensor Grid</a>
-        <a href="login.html">Sign In</a>
-      </nav>
-    </div>
-    <div class="header-right">
-      <div class="live-badge"><div class="dot"></div><span class="label">Live Sync</span></div>
-      <a href="profile.html" class="header-icon-link" title="Profile">
-        <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">account_circle</span>
-      </a>
-    </div>
-  </header>
-  <div class="body-wrap">
-    <!-- Placeholder content area — user will design this section -->
-    <main class="landing-main">
-      <span class="placeholder-tag">Landing Page Shell</span>
-      <p class="placeholder-body">
-        Content area reserved for landing page design.<br/>
-        This is a routing placeholder only &mdash; add real content here.
-      </p>
-      <div class="lp-nav">
-        <a href="login.html" class="a-pri">Sign In</a>
-        <a href="register.html" class="a-sec">Register</a>
-        <a href="dashboard.html" class="a-sec">Dashboard</a>
-      </div>
-    </main>
+
+<!-- ─── HEADER ─── -->
+<header class="lp-header">
+  <a class="brand" href="index.html">STREETFLOW<span>_LIVE</span></a>
+  <nav>
+    <a href="dashboard.html">Live Map</a>
+    <a href="simple-map.html">Sensor Grid</a>
+    <a href="login.html" class="nav-cta">Sign In</a>
+  </nav>
+</header>
+
+<!-- ─── HERO ─── -->
+<section class="hero" id="hero">
+  <div class="hero-tag">
+    <div class="dot"></div>
+    Prediction Engine Active
   </div>
-</div>
+  <h1>Predict your city's<br>traffic before it <em>happens</em></h1>
+  <p class="hero-sub">
+    A graph neural network forecasts congestion across monitored roads
+    and intersections — then finds you the fastest route through the city.
+    Currently live in Bangalore with 16&nbsp;sensors.
+  </p>
+  <div class="hero-cta-group">
+    <a href="dashboard.html" class="hero-cta primary">View Live Map</a>
+    <a href="login.html" class="hero-cta ghost">Get Started</a>
+  </div>
+
+  <!-- Live data ticker -->
+  <div class="data-ticker" id="dataTicker">
+    <span class="key">stratos_v2.4</span> <span class="bracket">&gt;</span>
+    <span class="key">predicted_speeds_kmh:</span> <span class="bracket">[</span><span class="val" id="tickerValues">—</span><span class="bracket">]</span>
+    <span class="key"> | epoch:</span> <span class="val" id="tickerEpoch">—</span>
+    <span class="key"> | roads:</span> <span class="val">16</span>
+    <span class="key"> | city:</span> <span class="val">BLR</span>
+  </div>
+</section>
+
+<!-- ─── FEATURES ─── -->
+<section class="features" id="features">
+  <div class="features-label">Capabilities</div>
+  <h2 class="features-heading">Built on real data,<br>not assumptions</h2>
+
+  <div class="feature-grid">
+
+    <!-- Feature 1: Congestion Prediction -->
+    <div class="feature-card" data-reveal>
+      <span class="feature-card-tag">01 — Congestion Prediction</span>
+      <div class="demo-container chart-demo">
+        <canvas id="chartCanvas"></canvas>
+      </div>
+      <h3>Forecasts next-day traffic speed per road</h3>
+      <p>
+        A spatio-temporal graph neural network learns from historical speed patterns
+        and the road-network topology to predict congestion across every monitored
+        segment before it materialises — scalable to any city grid.
+      </p>
+    </div>
+
+    <!-- Feature 2: Smart Routing -->
+    <div class="feature-card" data-reveal>
+      <span class="feature-card-tag">02 — Smart Routing</span>
+      <div class="demo-container route-demo">
+        <svg id="routeSvg" viewBox="0 0 400 110" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <h3>Congestion-aware routes that save real time</h3>
+      <p>
+        Compares an AI-optimised route against a standard shortest-path and shows the
+        difference. In live testing across Bangalore, the predicted route delivered an
+        <strong style="color:var(--primary);">8% travel time improvement</strong> on key corridors.
+      </p>
+    </div>
+
+    <!-- Feature 3: Live Map -->
+    <div class="feature-card" data-reveal>
+      <span class="feature-card-tag">03 — Live Sensor Grid</span>
+      <div class="demo-container map-demo">
+        <svg id="mapSvg" viewBox="0 0 400 140" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <h3>Interactive view of every monitored road</h3>
+      <p>
+        Each sensor displays its predicted speed colour-coded in real time — green for
+        free-flow, amber for moderate, red for congested — giving you a full network
+        overview at a glance, for any deployed city.
+      </p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ─── STATS BAR ─── -->
+<section class="stats-bar">
+  <div class="stat" data-reveal>
+    <div class="stat-value">16</div>
+    <div class="stat-label">Monitored Roads</div>
+  </div>
+  <div class="stat" data-reveal>
+    <div class="stat-value">8%</div>
+    <div class="stat-label">Time Improvement</div>
+  </div>
+  <div class="stat" data-reveal>
+    <div class="stat-value">GNN</div>
+    <div class="stat-label">Graph Neural Net</div>
+  </div>
+  <div class="stat" data-reveal>
+    <div class="stat-value">24h</div>
+    <div class="stat-label">Forecast Horizon</div>
+  </div>
+</section>
+
+<!-- ─── FINAL CTA ─── -->
+<section class="final-cta" data-reveal>
+  <h2>See your city's traffic,<br>predicted in real time</h2>
+  <p>
+    Open the live map to explore predicted speeds, compute optimised routes,
+    and compare them against static baselines — all from your browser.
+    Currently live in Bangalore.
+  </p>
+  <a href="dashboard.html" class="hero-cta primary">Open Live Map</a>
+</section>
+
+<!-- ─── FOOTER ─── -->
+<footer class="lp-footer">
+  <div class="brand-sm">STREETFLOW<span>_LIVE</span></div>
+  <div class="copy">STRATOS_v2.4 · Graph Neural Network · Real-Time Traffic Intelligence</div>
+</footer>
+
+<script>
+(function(){
+  // ── SCROLL-REVEAL ──────────────────────────────────────────────────────────
+  const reveals = document.querySelectorAll('[data-reveal]');
+  const io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        e.target.classList.add('visible');
+        io.unobserve(e.target);
+      }
+    });
+  },{ threshold: 0.15 });
+  reveals.forEach(function(el){ io.observe(el); });
+
+  // ── DEMO 1: ANIMATED SPEED CHART ──────────────────────────────────────────
+  (function(){
+    var canvas = document.getElementById('chartCanvas');
+    if(!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var dpr = window.devicePixelRatio || 1;
+
+    function resize(){
+      var rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width  = rect.width  * dpr;
+      canvas.height = rect.height * dpr;
+      canvas.style.width  = rect.width  + 'px';
+      canvas.style.height = rect.height + 'px';
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Simulated speed data for 3 roads
+    var roads = [
+      { pts: [], color: '#f2ca50', base: 55, amp: 20 },
+      { pts: [], color: 'rgba(242,202,80,.35)', base: 42, amp: 15 },
+      { pts: [], color: 'rgba(242,202,80,.15)', base: 68, amp: 12 },
+    ];
+    var numPts = 60;
+    roads.forEach(function(r){
+      for(var i=0;i<numPts;i++){
+        r.pts.push(r.base + Math.sin(i*.15)*r.amp + (Math.random()-.5)*6);
+      }
+    });
+
+    var offset = 0;
+    function draw(){
+      var w = canvas.width/dpr, h = canvas.height/dpr;
+      ctx.clearRect(0,0,w,h);
+
+      // Grid lines
+      ctx.strokeStyle = 'rgba(77,70,53,.25)';
+      ctx.lineWidth = 1;
+      for(var g=0;g<5;g++){
+        var gy = 10 + g * (h-20)/4;
+        ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(w,gy); ctx.stroke();
+      }
+
+      roads.forEach(function(r){
+        ctx.beginPath();
+        ctx.strokeStyle = r.color;
+        ctx.lineWidth = 1.5;
+        for(var i=0;i<numPts;i++){
+          var x = (i/(numPts-1))*w;
+          var idx = (i + Math.floor(offset)) % numPts;
+          var v = r.pts[idx];
+          var y = h - 10 - ((v-20)/70)*(h-20);
+          if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        }
+        ctx.stroke();
+      });
+
+      // Moving head dot
+      var headIdx = Math.floor(offset) % numPts;
+      var headV = roads[0].pts[headIdx];
+      var headY = h - 10 - ((headV-20)/70)*(h-20);
+      ctx.beginPath();
+      ctx.arc(w, headY, 3, 0, Math.PI*2);
+      ctx.fillStyle = '#f2ca50';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(w, headY, 7, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(242,202,80,.2)';
+      ctx.fill();
+
+      offset += 0.15;
+      requestAnimationFrame(draw);
+    }
+    draw();
+  })();
+
+  // ── DEMO 2: ROUTE RACE ANIMATION ──────────────────────────────────────────
+  (function(){
+    var svg = document.getElementById('routeSvg');
+    if(!svg) return;
+    var ns = 'http://www.w3.org/2000/svg';
+
+    // Waypoints (control points for two routes)
+    var staticPath = 'M 20,90 C 80,90 100,20 160,50 S 260,90 320,50 S 370,70 380,55';
+    var smartPath  = 'M 20,90 C 60,70 90,30 140,35 S 200,55 260,30 S 340,20 380,55';
+
+    // Labels
+    var labels = [
+      { x: 20, y: 104, text: 'ORIGIN', anchor: 'start' },
+      { x: 380, y: 104, text: 'DESTINATION', anchor: 'end' },
+    ];
+    labels.forEach(function(l){
+      var t = document.createElementNS(ns,'text');
+      t.setAttribute('x', l.x);
+      t.setAttribute('y', l.y);
+      t.setAttribute('text-anchor', l.anchor);
+      t.setAttribute('fill', '#8a7e6b');
+      t.setAttribute('font-family', "'JetBrains Mono', monospace");
+      t.setAttribute('font-size', '9');
+      t.setAttribute('letter-spacing', '.06em');
+      t.textContent = l.text;
+      svg.appendChild(t);
+    });
+
+    // Static route (dashed gray)
+    var sp = document.createElementNS(ns,'path');
+    sp.setAttribute('d', staticPath);
+    sp.setAttribute('fill','none');
+    sp.setAttribute('stroke','#5a5347');
+    sp.setAttribute('stroke-width','2');
+    sp.setAttribute('stroke-dasharray','5,5');
+    sp.setAttribute('opacity','.6');
+    svg.appendChild(sp);
+
+    // Smart route (solid gold)
+    var gp = document.createElementNS(ns,'path');
+    gp.setAttribute('d', smartPath);
+    gp.setAttribute('fill','none');
+    gp.setAttribute('stroke','#f2ca50');
+    gp.setAttribute('stroke-width','2.5');
+    gp.setAttribute('opacity','.9');
+    svg.appendChild(gp);
+
+    // Animated dots travelling along each route
+    function makeDot(pathEl, color, dur, size){
+      var dot = document.createElementNS(ns,'circle');
+      dot.setAttribute('r', size || '4');
+      dot.setAttribute('fill', color);
+
+      var glow = document.createElementNS(ns,'circle');
+      glow.setAttribute('r', String((size||4)*2.2));
+      glow.setAttribute('fill', color);
+      glow.setAttribute('opacity','0.15');
+
+      var anim = document.createElementNS(ns,'animateMotion');
+      anim.setAttribute('dur', dur+'s');
+      anim.setAttribute('repeatCount','indefinite');
+      anim.setAttribute('fill','freeze');
+      var mp = document.createElementNS(ns,'mpath');
+      mp.setAttributeNS('http://www.w3.org/1999/xlink','href','#'+pathEl.id);
+      anim.appendChild(mp);
+
+      var anim2 = anim.cloneNode(true);
+      var mp2 = document.createElementNS(ns,'mpath');
+      mp2.setAttributeNS('http://www.w3.org/1999/xlink','href','#'+pathEl.id);
+      anim2.appendChild(mp2);
+
+      dot.appendChild(anim);
+      glow.appendChild(anim2);
+      svg.appendChild(glow);
+      svg.appendChild(dot);
+    }
+
+    sp.id = 'staticRoutePath';
+    gp.id = 'smartRoutePath';
+    makeDot(sp, '#8a7e6b', 5, 3);
+    makeDot(gp, '#f2ca50', 3.5, 4);
+
+    // Label: -8% faster
+    var badge = document.createElementNS(ns,'text');
+    badge.setAttribute('x','330');
+    badge.setAttribute('y','20');
+    badge.setAttribute('fill','#f2ca50');
+    badge.setAttribute('font-family',"'JetBrains Mono', monospace");
+    badge.setAttribute('font-size','10');
+    badge.setAttribute('font-weight','600');
+    badge.setAttribute('letter-spacing','.06em');
+    badge.textContent = '▲ 8% FASTER';
+    svg.appendChild(badge);
+
+    // Origin & destination dots
+    [{ x:20, y:90 },{ x:380, y:55 }].forEach(function(p,i){
+      var c = document.createElementNS(ns,'circle');
+      c.setAttribute('cx',p.x); c.setAttribute('cy',p.y);
+      c.setAttribute('r','5');
+      c.setAttribute('fill', i===0 ? '#f2ca50' : '#d4af37');
+      c.setAttribute('stroke','var(--bg)');
+      c.setAttribute('stroke-width','2');
+      svg.appendChild(c);
+    });
+  })();
+
+  // ── DEMO 3: MINI MAP PULSING DOTS ────────────────────────────────────────
+  (function(){
+    var svg = document.getElementById('mapSvg');
+    if(!svg) return;
+    var ns = 'http://www.w3.org/2000/svg';
+
+    // Sensor positions (normalised to viewBox) — generic city grid
+    var sensors = [
+      { x:200, y:60,  name:'Sensor 0' },
+      { x:210, y:55,  name:'Sensor 1' },
+      { x:310, y:65,  name:'Sensor 2' },
+      { x:170, y:85,  name:'Sensor 3' },
+      { x:180, y:90,  name:'Sensor 4' },
+      { x:190, y:50,  name:'Sensor 5' },
+      { x:195, y:48,  name:'Sensor 6' },
+      { x:145, y:92,  name:'Sensor 7' },
+      { x:150, y:95,  name:'Sensor 8' },
+      { x:160, y:22,  name:'Sensor 9' },
+      { x:155, y:18,  name:'Sensor 10' },
+      { x:100, y:25,  name:'Sensor 11' },
+      { x:95,  y:28,  name:'Sensor 12' },
+      { x:340, y:55,  name:'Sensor 13' },
+      { x:165, y:100, name:'Sensor 14' },
+      { x:175, y:88,  name:'Sensor 15' },
+    ];
+
+    // Subtle grid / road lines
+    var roadPaths = [
+      'M 80,20 L 200,60 L 340,55',
+      'M 160,22 L 190,50 L 200,60',
+      'M 100,25 L 160,22',
+      'M 200,60 L 180,90 L 165,100',
+      'M 190,50 L 310,65',
+    ];
+    roadPaths.forEach(function(d){
+      var p = document.createElementNS(ns,'path');
+      p.setAttribute('d',d);
+      p.setAttribute('fill','none');
+      p.setAttribute('stroke','rgba(77,70,53,.3)');
+      p.setAttribute('stroke-width','1');
+      svg.appendChild(p);
+    });
+
+    // Sensor dots
+    var colors = ['#22c55e','#eab308','#ef4444'];
+    sensors.forEach(function(s, i){
+      var col = colors[i % 3];
+      // Glow ring
+      var glow = document.createElementNS(ns,'circle');
+      glow.setAttribute('cx', s.x); glow.setAttribute('cy', s.y);
+      glow.setAttribute('r','8');
+      glow.setAttribute('fill','none');
+      glow.setAttribute('stroke', col);
+      glow.setAttribute('stroke-width','1');
+      glow.setAttribute('opacity','0');
+      var animR = document.createElementNS(ns,'animate');
+      animR.setAttribute('attributeName','r');
+      animR.setAttribute('values','4;10;4');
+      animR.setAttribute('dur', (2 + i*0.3)+'s');
+      animR.setAttribute('repeatCount','indefinite');
+      glow.appendChild(animR);
+      var animO = document.createElementNS(ns,'animate');
+      animO.setAttribute('attributeName','opacity');
+      animO.setAttribute('values','0.5;0;0.5');
+      animO.setAttribute('dur', (2 + i*0.3)+'s');
+      animO.setAttribute('repeatCount','indefinite');
+      glow.appendChild(animO);
+      svg.appendChild(glow);
+
+      // Core dot
+      var dot = document.createElementNS(ns,'circle');
+      dot.setAttribute('cx', s.x); dot.setAttribute('cy', s.y);
+      dot.setAttribute('r','3');
+      dot.setAttribute('fill', col);
+      svg.appendChild(dot);
+    });
+
+    // City grid label
+    var lbl = document.createElementNS(ns,'text');
+    lbl.setAttribute('x','30'); lbl.setAttribute('y','130');
+    lbl.setAttribute('fill','#5a5347');
+    lbl.setAttribute('font-family',"'JetBrains Mono', monospace");
+    lbl.setAttribute('font-size','9');
+    lbl.setAttribute('letter-spacing','.1em');
+    lbl.textContent = 'CITY GRID · 16 SENSORS';
+    svg.appendChild(lbl);
+  })();
+
+  // ── DATA TICKER ANIMATION ────────────────────────────────────────────────
+  (function(){
+    var valEl = document.getElementById('tickerValues');
+    var epochEl = document.getElementById('tickerEpoch');
+    if(!valEl) return;
+    var epoch = 1;
+    function update(){
+      var speeds = [];
+      for(var i=0;i<6;i++){
+        speeds.push((30 + Math.random()*50).toFixed(1));
+      }
+      valEl.textContent = speeds.join(', ') + ', …';
+      epochEl.textContent = String(epoch);
+      epoch++;
+    }
+    update();
+    setInterval(update, 2400);
+  })();
+
+})();
+</script>
 </body>
 </html>
