@@ -1,1 +1,17 @@
-{"dataconnect": {"source": "dataconnect"}, "hosting": {"public": "frontend", "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]}}
+{
+  "database": {
+    "rules": "database.rules.json"
+  },
+  "dataconnect": {
+    "source": "dataconnect"
+  },
+  "hosting": {
+    "public": "frontend",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}
+

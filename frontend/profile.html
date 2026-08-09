@@ -108,55 +108,147 @@
     </main>
   </div>
 </div>
-<script>
-  var prev = {};
-  var FIELDS = ['pName', 'pEmail', 'pRole'];
+<script type="module">
+  import {
+    auth,
+    db,
+    onAuthStateChanged,
+    signOut,
+    ref,
+    get,
+    update
+  } from './firebase-init.js';
 
-  function startEdit() {
-    prev = {};
-    FIELDS.forEach(function(id) {
-      var el = document.getElementById(id);
-      prev[id] = el.value;
-      el.removeAttribute('readonly');
-      el.style.borderColor = 'var(--primary)';
+  let currentUser = null;
+  let prevValues  = {};
+  const FIELDS    = ['pName', 'pEmail', 'pRole'];
+
+  // Listen to Auth State
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      currentUser = user;
+      console.log('[PROFILE AUTH] Logged in as:', user.email, '| UID:', user.uid);
+      document.getElementById('pEmail').value = user.email || '';
+
+      // Read Realtime Database record `users/${user.uid}`
+      try {
+        const snapshot = await get(ref(db, `users/${user.uid}`));
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          console.log('[PROFILE DB READ SUCCESS] Data from users/' + user.uid + ':', data);
+
+          const name = data.name || user.displayName || user.email.split('@')[0];
+          const role = data.role || 'Operator / Analyst';
+
+          document.getElementById('pName').value = name;
+          document.getElementById('displayName').textContent = name;
+          document.getElementById('avatarInit').textContent = name.charAt(0).toUpperCase();
+
+          document.getElementById('pRole').value = role;
+          document.getElementById('displayRole').textContent = role;
+
+          document.getElementById('stubNote').textContent = 'Profile synced live from Realtime Database (path: users/' + user.uid + ').';
+        } else {
+          console.warn('[PROFILE DB READ] No record found at users/' + user.uid + '. Using session default.');
+          const name = user.displayName || user.email.split('@')[0];
+          document.getElementById('pName').value = name;
+          document.getElementById('displayName').textContent = name;
+          document.getElementById('avatarInit').textContent = name.charAt(0).toUpperCase();
+          document.getElementById('stubNote').textContent = 'Loaded from Auth session. Click Edit to save to Realtime Database.';
+        }
+      } catch (err) {
+        console.error('[PROFILE DB READ ERROR]', err);
+        document.getElementById('stubNote').textContent = 'Database error: ' + (err.message || err);
+      }
+    } else {
+      console.log('[PROFILE AUTH] No authenticated user detected.');
+      document.getElementById('stubNote').textContent = 'Not signed in. Please sign in or create an account.';
+    }
+  });
+
+  // Make functions global for inline button onclick handlers
+  window.startEdit = function() {
+    prevValues = {};
+    FIELDS.forEach((id) => {
+      const el = document.getElementById(id);
+      prevValues[id] = el.value;
+      if (id !== 'pEmail') { // Keep email read-only
+        el.removeAttribute('readonly');
+        el.style.borderColor = 'var(--primary)';
+      }
     });
     document.getElementById('editBtn').style.display = 'none';
     document.getElementById('saveBtn').style.display = '';
     document.getElementById('cancelBtn').style.display = '';
-    document.getElementById('stubNote').textContent =
-      'Editing — changes are UI-only, not persisted to any backend.';
-  }
+    document.getElementById('stubNote').textContent = 'Editing profile... Click Save to write to Realtime Database.';
+  };
 
-  function saveEdit() {
-    FIELDS.forEach(function(id) {
-      var el = document.getElementById(id);
+  window.saveEdit = async function() {
+    const name = document.getElementById('pName').value.trim() || 'Operator Name';
+    const role = document.getElementById('pRole').value.trim() || 'Operator / Analyst';
+
+    FIELDS.forEach((id) => {
+      const el = document.getElementById(id);
       el.setAttribute('readonly', '');
       el.style.borderColor = '';
     });
-    var name = document.getElementById('pName').value.trim() || 'Operator Name';
+
     document.getElementById('displayName').textContent = name;
+    document.getElementById('displayRole').textContent = role;
     document.getElementById('avatarInit').textContent = name.charAt(0).toUpperCase();
     document.getElementById('editBtn').style.display = '';
     document.getElementById('saveBtn').style.display = 'none';
     document.getElementById('cancelBtn').style.display = 'none';
-    document.getElementById('stubNote').textContent =
-      'Edit is a UI placeholder — no persistence yet.';
-    console.log('[PROFILE STUB] saveEdit called — not persisted.');
-  }
 
-  function cancelEdit() {
-    FIELDS.forEach(function(id) {
-      var el = document.getElementById(id);
-      if (prev[id] !== undefined) el.value = prev[id];
+    if (currentUser) {
+      try {
+        document.getElementById('stubNote').textContent = 'Saving to Realtime Database...';
+        const userPath = `users/${currentUser.uid}`;
+        await update(ref(db, userPath), {
+          name: name,
+          role: role,
+          updatedAt: new Date().toISOString()
+        });
+        console.log('[PROFILE DB UPDATE SUCCESS] Written to path:', userPath);
+        document.getElementById('stubNote').textContent = 'Profile successfully updated in Realtime Database.';
+      } catch (err) {
+        console.error('[PROFILE DB UPDATE ERROR]', err);
+        document.getElementById('stubNote').textContent = 'Save failed: ' + (err.message || err);
+      }
+    } else {
+      document.getElementById('stubNote').textContent = 'Not signed in — cannot write to database.';
+    }
+  };
+
+  window.cancelEdit = function() {
+    FIELDS.forEach((id) => {
+      const el = document.getElementById(id);
+      if (prevValues[id] !== undefined) el.value = prevValues[id];
       el.setAttribute('readonly', '');
       el.style.borderColor = '';
     });
     document.getElementById('editBtn').style.display = '';
     document.getElementById('saveBtn').style.display = 'none';
     document.getElementById('cancelBtn').style.display = 'none';
-    document.getElementById('stubNote').textContent =
-      'Edit is a UI placeholder — no persistence yet.';
-  }
+    document.getElementById('stubNote').textContent = 'Edit cancelled.';
+  };
+
+  // Attach Sign Out listener to all logout links on page
+  document.querySelectorAll('a[href="landing.html"]').forEach((link) => {
+    if (link.textContent.includes('Sign Out')) {
+      link.addEventListener('click', async (e) => {
+        e.preventDefault();
+        try {
+          await signOut(auth);
+          console.log('[AUTH] Signed out.');
+          window.location.href = 'landing.html';
+        } catch (err) {
+          console.error('[AUTH SIGNOUT ERROR]', err);
+          window.location.href = 'landing.html';
+        }
+      });
+    }
+  });
 </script>
 </body>
 </html>

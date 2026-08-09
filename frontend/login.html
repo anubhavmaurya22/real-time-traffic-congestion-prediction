@@ -34,16 +34,76 @@
     </form>
   </div>
 </div>
-<script>
-  // STUB: No auth backend exists yet.
-  // Logs form values to the browser console only, then redirects to dashboard.
-  // Does NOT check credentials against any backend or local store.
-  document.getElementById('loginForm').addEventListener('submit', function(e) {
+<script type="module">
+  import {
+    auth,
+    db,
+    signInWithEmailAndPassword,
+    ref,
+    get,
+    child
+  } from './firebase-init.js';
+
+  document.getElementById('loginForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    var email    = document.getElementById('loginEmail').value.trim();
-    var password = document.getElementById('loginPassword').value;
-    console.log('[LOGIN STUB] email:', email, '| password length:', password.length);
-    window.location.href = 'dashboard.html';
+    const emailInput = document.getElementById('loginEmail');
+    const passInput  = document.getElementById('loginPassword');
+    const errEl      = document.getElementById('loginErr');
+    const btn        = document.getElementById('loginBtn');
+
+    const email    = emailInput.value.trim();
+    const password = passInput.value;
+
+    errEl.textContent = '';
+    errEl.style.color = '#ff5252';
+
+    if (!email || !password) {
+      errEl.textContent = 'Please enter both email and password.';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Signing In...';
+
+    try {
+      console.log('[LOGIN] Authenticating user:', email);
+      // 1. Firebase Authentication
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      console.log('[LOGIN SUCCESS] Auth user signed in. UID:', user.uid);
+
+      // 2. Fetch User Document from Realtime Database at `users/${user.uid}`
+      const userPath = `users/${user.uid}`;
+      console.log('[LOGIN DB READ] Fetching profile from path:', userPath);
+      const snapshot = await get(child(ref(db), userPath));
+
+      if (snapshot.exists()) {
+        console.log('[LOGIN DB SUCCESS] User profile retrieved from Realtime Database:', snapshot.val());
+      } else {
+        console.warn('[LOGIN DB WARNING] User authenticated, but no database record found at path:', userPath);
+      }
+
+      // 3. Redirect to dashboard
+      window.location.href = 'dashboard.html';
+    } catch (error) {
+      console.error('[LOGIN ERROR]', error);
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+
+      let msg = error.message || 'Authentication failed.';
+      if (
+        error.code === 'auth/user-not-found' ||
+        error.code === 'auth/wrong-password' ||
+        error.code === 'auth/invalid-credential'
+      ) {
+        msg = 'Invalid email or password.';
+      } else if (error.code === 'auth/invalid-email') {
+        msg = 'Invalid email address format.';
+      } else if (error.code === 'PERMISSION_DENIED') {
+        msg = 'Database read permission denied by security rules.';
+      }
+      errEl.textContent = msg;
+    }
   });
 </script>
 </body>

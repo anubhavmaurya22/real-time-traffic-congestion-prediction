@@ -44,23 +44,93 @@
     </form>
   </div>
 </div>
-<script>
-  // STUB: No auth backend exists yet.
-  // Validates password match client-side only, logs to console, redirects to dashboard.
-  document.getElementById('registerForm').addEventListener('submit', function(e) {
+<script type="module">
+  import {
+    auth,
+    db,
+    createUserWithEmailAndPassword,
+    ref,
+    set
+  } from './firebase-init.js';
+
+  document.getElementById('registerForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    var name     = document.getElementById('regName').value.trim();
-    var email    = document.getElementById('regEmail').value.trim();
-    var password = document.getElementById('regPassword').value;
-    var confirm  = document.getElementById('regConfirm').value;
-    var errEl    = document.getElementById('registerErr');
+    const nameInput    = document.getElementById('regName');
+    const emailInput   = document.getElementById('regEmail');
+    const passInput    = document.getElementById('regPassword');
+    const confirmInput = document.getElementById('regConfirm');
+    const errEl        = document.getElementById('registerErr');
+    const btn          = document.getElementById('registerBtn');
+
+    const name     = nameInput.value.trim();
+    const email    = emailInput.value.trim();
+    const password = passInput.value;
+    const confirm  = confirmInput.value;
+
+    errEl.textContent = '';
+    errEl.style.color = '#ff5252';
+
+    if (!name) {
+      errEl.textContent = 'Please enter your full name.';
+      return;
+    }
+    if (!email) {
+      errEl.textContent = 'Please enter your email.';
+      return;
+    }
+    if (!password) {
+      errEl.textContent = 'Please enter a password.';
+      return;
+    }
     if (password !== confirm) {
       errEl.textContent = 'Passwords do not match.';
       return;
     }
-    errEl.textContent = '';
-    console.log('[REGISTER STUB] name:', name, '| email:', email, '| password length:', password.length);
-    window.location.href = 'dashboard.html';
+
+    btn.disabled = true;
+    btn.textContent = 'Creating Account...';
+
+    try {
+      console.log('[REGISTER] Creating Firebase Auth account for:', email);
+      // 1. Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      console.log('[REGISTER SUCCESS] Firebase Auth user created. UID:', user.uid);
+
+      // 2. Write User Document to Realtime Database at `users/${user.uid}`
+      const userPath = `users/${user.uid}`;
+      const userData = {
+        uid: user.uid,
+        name: name,
+        email: user.email,
+        role: 'Operator / Analyst',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      console.log('[REGISTER DB WRITE] Target path:', userPath, '| Data:', userData);
+      await set(ref(db, userPath), userData);
+      console.log('[REGISTER DB SUCCESS] Database record created successfully at:', userPath);
+
+      // 3. Redirect to dashboard ONLY after database write succeeds
+      window.location.href = 'dashboard.html';
+    } catch (error) {
+      console.error('[REGISTER ERROR]', error);
+      btn.disabled = false;
+      btn.textContent = 'Create Account';
+
+      let msg = error.message || 'Registration failed.';
+      if (error.code === 'auth/email-already-in-use') {
+        msg = 'This email address is already registered.';
+      } else if (error.code === 'auth/weak-password') {
+        msg = 'Password should be at least 6 characters.';
+      } else if (error.code === 'auth/invalid-email') {
+        msg = 'Invalid email address format.';
+      } else if (error.code === 'PERMISSION_DENIED') {
+        msg = 'Database write permission denied by security rules.';
+      }
+      errEl.textContent = msg;
+    }
   });
 </script>
 </body>
