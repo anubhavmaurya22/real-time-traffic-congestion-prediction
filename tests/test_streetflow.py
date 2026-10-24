@@ -103,6 +103,11 @@ class TestSpeedEstimatorCrossValidation:
 class TestBoundingBoxValidation:
     """Test Pydantic validation for the Bangalore bounding box."""
 
+    @pytest.fixture(autouse=True)
+    def check_deps(self):
+        pytest.importorskip("fastapi")
+        pytest.importorskip("pydantic")
+
     def test_valid_coordinates(self):
         """Coordinates inside Bangalore should be accepted."""
         from api_bangalore import LatLng
@@ -264,6 +269,11 @@ class TestRouteScoring:
 class TestAPIErrorHandling:
     """Test API 400 and 502 error paths."""
 
+    @pytest.fixture(autouse=True)
+    def check_deps(self):
+        pytest.importorskip("fastapi")
+        pytest.importorskip("pydantic")
+
     def test_outside_bangalore_returns_400(self):
         """A destination outside Bangalore should return HTTP 400."""
         from api_bangalore import LatLng
@@ -289,6 +299,10 @@ class TestAPIErrorHandling:
 
 class TestModelSmokeTest:
     """Verify the A3T-GCN model loads and produces correct output shape."""
+
+    @pytest.fixture(autouse=True)
+    def check_deps(self):
+        pytest.importorskip("torch")
 
     def test_model_forward_pass(self):
         """Model should output shape (16, 3) for 16 roads, 3-day horizon."""
