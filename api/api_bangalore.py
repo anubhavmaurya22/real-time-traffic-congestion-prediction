@@ -5,7 +5,8 @@ Run with:  uvicorn api_bangalore:app --reload
 Then visit http://127.0.0.1:8000/docs for interactive testing.
 
 Endpoints:
-  GET  /                   → health check
+  GET  /                   → health check (basic)
+  GET  /health             → detailed health (model status, dataset end date)
   POST /predict            → predicted speeds for all 16 roads
   POST /route              → original integer-based routing (kept for compat)
   POST /route/custom       → arbitrary origin/destination routing via OSRM
@@ -15,7 +16,9 @@ Endpoints:
 """
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError 
 from pydantic import BaseModel, field_validator
 from typing import List, Optional
 import torch
@@ -27,6 +30,7 @@ import os
 import time
 import asyncio
 import hashlib
+import secrets
 
 # ---------------------------------------------------------------------------
 # Path setup — works regardless of which directory uvicorn is invoked from
@@ -71,12 +75,23 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
 )
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Convert Pydantic validation errors (HTTP 422) to HTTP 400."""
+    errors = exc.errors()
+    msg = errors[0].get("msg", "Validation error") if errors else "Validation error"
+    return JSONResponse(
+        status_code=400,
+        content={"detail": msg, "errors": errors},
+    )
+
 state = {}
 
+
 # ---------------------------------------------------------------------------
-# Admin reload token — set ADMIN_RELOAD_TOKEN env var to protect this endpoint
+# Admin reload token — MUST be set as environment variable to enable reload
 # ---------------------------------------------------------------------------
-ADMIN_TOKEN = os.environ.get("ADMIN_RELOAD_TOKEN", "changeme")
+ADMIN_TOKEN = os.environ.get("ADMIN_RELOAD_TOKEN")  # None if not set
 
 # ---------------------------------------------------------------------------
 # Simple in-memory rate limiter + cache for /route/custom
@@ -86,6 +101,14 @@ _cache = {}        # hash(request) → (response, timestamp)
 RATE_LIMIT_MAX = 10       # requests per window
 RATE_LIMIT_WINDOW = 60    # seconds
 CACHE_TTL = 300           # seconds
+
+
+def _get_client_ip(request: Request) -> str:
+    """Get client IP from X-Real-IP header (set by nginx), else request.client.host."""
+    x_real_ip = request.headers.get("x-real-ip")
+    if x_real_ip:
+        return x_real_ip
+    return request.client.host if request.client else "unknown"
 
 
 def _rate_limit_check(client_ip: str):
@@ -169,18 +192,38 @@ class AdminReloadRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Exception handler: convert Pydantic 422 to 400 with user-friendly message
+# ---------------------------------------------------------------------------
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Return 400 (not 422) for validation errors with clear messages."""
+    messages = []
+    for err in exc.errors():
+        loc = " → ".join(str(x) for x in err.get("loc", []))
+        messages.append(f"{loc}: {err['msg']}")
+    return JSONResponse(
+        status_code=400,
+        content={"detail": "; ".join(messages)},
+    )
+
+
+# ---------------------------------------------------------------------------
 # Startup: load model + data
 # ---------------------------------------------------------------------------
 
 def _load_model_and_data():
     """Load dataset, model checkpoint, and speed estimator. Used at startup and reload."""
-    dataset, means, stds, road_order = load_bangalore_dataset(
+    dataset, means, stds, road_order, all_dates = load_bangalore_dataset(
         num_timesteps_in=7, num_timesteps_out=3
     )
-    train_dataset, remaining = temporal_signal_split(dataset, train_ratio=0.7)
-    _, test_dataset = temporal_signal_split(remaining, train_ratio=1 / 3)
 
-    sample = next(iter(train_dataset))
+    # Use the LAST window of the full dataset (most recent 7 days) so the
+    # forecast covers the 3 days after the end of the data.
+    snapshots = list(dataset)
+    last_snap = snapshots[-1]
+
+    sample = snapshots[0]
     model = TrafficForecastModel(
         in_channels=sample.x.shape[1], in_periods=7, out_periods=3
     )
@@ -197,11 +240,34 @@ def _load_model_and_data():
     speed_mean = float(means[0, 0, 0])
     speed_std = float(stds[0, 0, 0])
 
-    # Get predicted speeds for all 3 days from the last test snapshot
-    test_snap = next(iter(test_dataset))
+    # Derive forecast dates from the dataset's date range
+    # The last snapshot's input covers the last 7 days of data, and its
+    # forecast covers the 3 days immediately after.
+    data_end_date = all_dates[-1]
+    # The last window starts at: end - in_periods - out_periods + 1 + in_periods = end - out_periods + 1
+    # Forecast dates are: data_end_date - 2, data_end_date - 1, data_end_date
+    # Actually: the dataset has windows from t=0..T-10. The last window starts
+    # at T-10, takes days T-10..T-3 as input, and forecasts T-2, T-1, T.
+    # But we want to forecast AFTER the data ends, so we use the last snapshot
+    # of the full (unsplit) dataset.
+    # For the full dataset: num_windows = T - in - out + 1, last window index = T - in - out
+    # That window's input = days [T-in-out .. T-out-1], forecast = days [T-out .. T-1]
+    # So the forecast covers the LAST out_periods days of the dataset.
+    # To forecast AFTER the dataset, we need input = last 7 days of data.
+    # The last snapshot of the full dataset does exactly this.
+    num_timesteps_in = 7
+    num_timesteps_out = 3
+    total_days = len(all_dates)
+    # Last window: input = days[total-10 .. total-4], forecast = days[total-3 .. total-1]
+    # These are the last 3 dates in all_dates
+    forecast_dates = [
+        str((data_end_date - pd.Timedelta(days=num_timesteps_out - 1 - d)).date())
+        for d in range(num_timesteps_out)
+    ]
+
+    # Get predicted speeds for all 3 days from the last snapshot
     with torch.no_grad():
-        pred_out = model(test_snap.x, test_snap.edge_index, test_snap.edge_attr)
-    # pred_out shape: (16, 3) — 3 horizons
+        pred_out = model(last_snap.x, last_snap.edge_index, last_snap.edge_attr)
     predicted_speeds_per_day = []
     for d in range(3):
         speeds_d = (pred_out[:, d] * speed_std + speed_mean).tolist()
@@ -212,7 +278,7 @@ def _load_model_and_data():
 
     return {
         "model": model,
-        "snapshot": test_snap,
+        "snapshot": last_snap,
         "num_nodes": sample.x.shape[0],
         "speed_mean": speed_mean,
         "speed_std": speed_std,
@@ -221,6 +287,8 @@ def _load_model_and_data():
         "road_coords": road_coords,
         "speed_estimator": speed_estimator,
         "predicted_speeds_per_day": predicted_speeds_per_day,
+        "data_end_date": str(data_end_date.date()),
+        "forecast_dates": forecast_dates,
         "loaded": True,
     }
 
@@ -231,7 +299,9 @@ def load_resources():
     state.update(loaded)
     print(
         f"[startup] loaded {state['num_nodes']} roads | "
-        f"speed mean={state['speed_mean']:.1f} std={state['speed_std']:.1f} km/h"
+        f"speed mean={state['speed_mean']:.1f} std={state['speed_std']:.1f} km/h | "
+        f"data ends {state['data_end_date']} | "
+        f"forecasts {state['forecast_dates']}"
     )
 
 
@@ -248,6 +318,19 @@ def root():
     }
 
 
+@app.get("/health")
+def health():
+    """Detailed health check — returns model status and dataset metadata."""
+    return {
+        "status": "ok" if state.get("loaded") else "not_loaded",
+        "model_loaded": state.get("loaded", False),
+        "num_roads": state.get("num_nodes"),
+        "data_end_date": state.get("data_end_date"),
+        "forecast_dates": state.get("forecast_dates"),
+        "speed_mean_kmh": state.get("speed_mean"),
+    }
+
+
 @app.post("/predict")
 def predict():
     if not state.get("loaded"):
@@ -256,7 +339,12 @@ def predict():
     with torch.no_grad():
         out = state["model"](snapshot.x, snapshot.edge_index, snapshot.edge_attr)
     predicted_kmh = (out[:, 0] * state["speed_std"] + state["speed_mean"]).tolist()
-    return {"predicted_speeds_kmh": predicted_kmh, "road_names": state["road_names"]}
+    return {
+        "predicted_speeds_kmh": predicted_kmh,
+        "road_names": state["road_names"],
+        "data_end_date": state["data_end_date"],
+        "forecast_dates": state["forecast_dates"],
+    }
 
 
 @app.post("/route")
@@ -288,6 +376,8 @@ def route(req: RouteRequest):
     road_names = state["road_names"]
     result["predicted_route_names"] = [road_names[i] for i in result["predicted_route"]]
     result["static_route_names"] = [road_names[i] for i in result["static_route"]]
+    result["data_end_date"] = state["data_end_date"]
+    result["forecast_dates"] = state["forecast_dates"]
     return result
 
 
@@ -301,8 +391,8 @@ async def route_custom(req: CustomRouteRequest, request: Request):
     if not state.get("loaded"):
         raise HTTPException(status_code=503, detail="model not loaded")
 
-    # Rate limiting
-    client_ip = request.client.host if request.client else "unknown"
+    # Rate limiting — use X-Real-IP header (set by nginx), fall back to client.host
+    client_ip = _get_client_ip(request)
     _rate_limit_check(client_ip)
 
     # Validate minimum distance between origin and destination (200 m)
@@ -356,6 +446,10 @@ async def route_custom(req: CustomRouteRequest, request: Request):
         state["speed_mean"],
     )
 
+    # Add date metadata
+    response["data_end_date"] = state["data_end_date"]
+    response["forecast_dates"] = state["forecast_dates"]
+
     # Cache the response
     _cache[ck] = (response, time.time())
 
@@ -367,8 +461,15 @@ def admin_reload(req: AdminReloadRequest):
     """
     Hot-reload the model checkpoint without restarting the server.
     Protected by ADMIN_RELOAD_TOKEN environment variable.
+    If ADMIN_RELOAD_TOKEN is not set, returns 503 (disabled).
     """
-    if req.token != ADMIN_TOKEN:
+    if ADMIN_TOKEN is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Admin reload is disabled. Set ADMIN_RELOAD_TOKEN environment variable."
+        )
+
+    if not secrets.compare_digest(req.token, ADMIN_TOKEN):
         raise HTTPException(status_code=403, detail="Invalid admin token")
 
     try:
@@ -380,6 +481,7 @@ def admin_reload(req: AdminReloadRequest):
             "status": "reloaded",
             "num_roads": state["num_nodes"],
             "speed_mean": state["speed_mean"],
+            "data_end_date": state["data_end_date"],
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Reload failed: {str(e)}")

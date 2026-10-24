@@ -104,11 +104,11 @@ def load_bangalore_dataset(
     print(f"Built {len(features)} windows ({num_timesteps_in}-day input -> {num_timesteps_out}-day forecast)")
     print(f"Speed mean: {means[0,0,0]:.2f}, std: {stds[0,0,0]:.2f} (use to denormalize predictions)")
 
-    return dataset, means, stds, road_order
+    return dataset, means, stds, road_order, all_dates
 
 
 if __name__ == "__main__":
-    dataset, means, stds, road_order = load_bangalore_dataset()
+    dataset, means, stds, road_order, all_dates = load_bangalore_dataset()
     train_dataset, remaining = temporal_signal_split(dataset, train_ratio=0.7)
     val_dataset, test_dataset = temporal_signal_split(remaining, train_ratio=1 / 3)
 
@@ -120,5 +120,6 @@ if __name__ == "__main__":
     print(f"\nsample x shape: {tuple(sample.x.shape)}")
     print(f"sample y shape: {tuple(sample.y.shape)}")
     print(f"edge_index shape: {tuple(sample.edge_index.shape)}")
+    print(f"date range: {all_dates[0].date()} to {all_dates[-1].date()} ({len(all_dates)} days)")
 
     print("\nBangalore dataset pipeline: READY")

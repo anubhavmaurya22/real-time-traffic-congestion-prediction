@@ -5,18 +5,21 @@ Reports:
   1. MAE, RMSE, MAPE per forecast horizon (day 1, 2, 3) for:
      - A3T-GCN model
      - Persistence baseline (repeat last day of input)
-     - Historical day-of-week average baseline
-  2. Leave-one-road-out spatial estimator metrics (IDW vs learned vs mean).
-  3. Saves results.json and PNG plots:
+     - Historical average baseline
+  2. Per-road MAE analysis (best/worst).
+  3. Leave-one-road-out spatial estimator metrics — both strict (excludes
+     near-duplicate roads within 0.5 km) and original (single exclusion).
+     Evaluated on both model-predicted and observed speeds.
+  4. Saves results.json and PNG plots:
      - training_curve.png (if training log CSV exists)
      - error_vs_horizon.png
      - predicted_vs_observed.png (best and worst road)
+  5. ETA sanity check from data/eta_check.csv (if user-filled).
 
 Every number in results.json is computed by this script — nothing fabricated.
 
 Usage:
-    cd data
-    python ../model/evaluate_bangalore.py
+    python model/evaluate_bangalore.py
 """
 
 import os
@@ -79,7 +82,7 @@ def main():
     np.random.seed(config["seed"])
 
     # Load data
-    dataset, means, stds, road_order = load_bangalore_dataset(
+    dataset, means, stds, road_order, all_dates = load_bangalore_dataset(
         num_timesteps_in=config["data"]["num_timesteps_in"],
         num_timesteps_out=config["data"]["num_timesteps_out"],
     )
@@ -124,46 +127,40 @@ def main():
     print(f"[eval] Test windows: {num_test}")
 
     # ── 1. A3T-GCN per-horizon metrics ───────────────────────────────────────
-    # Reshape: (T*16, 3)
     preds_flat = preds.reshape(-1, 3)
     targets_flat = targets.reshape(-1, 3)
 
     model_metrics = per_horizon_metrics(preds_flat, targets_flat, speed_mean, speed_std)
-    print("\n═══ A3T-GCN Metrics (per horizon) ═══")
+    print("\n=== A3T-GCN Metrics (per horizon) ===")
     for k, v in model_metrics.items():
         print(f"  {k}: MAE={v['MAE']:.3f}  RMSE={v['RMSE']:.3f}  MAPE={v['MAPE']:.2f}%")
 
-    # ── 2. Persistence baseline: repeat last day of input ─────────────────────
-    # Last input day speed (feature 0): inputs[:, :, 0, -1]
-    persist_pred = inputs[:, :, 0, -1].unsqueeze(-1).expand_as(targets)  # (T, 16, 3)
+    # ── 2. Persistence baseline ──────────────────────────────────────────────
+    persist_pred = inputs[:, :, 0, -1].unsqueeze(-1).expand_as(targets)
     persist_flat = persist_pred.reshape(-1, 3)
     persist_metrics = per_horizon_metrics(persist_flat, targets_flat, speed_mean, speed_std)
-    print("\n═══ Persistence Baseline (repeat last day) ═══")
+    print("\n=== Persistence Baseline (repeat last day) ===")
     for k, v in persist_metrics.items():
         print(f"  {k}: MAE={v['MAE']:.3f}  RMSE={v['RMSE']:.3f}  MAPE={v['MAPE']:.2f}%")
 
-    # ── 3. Historical day-of-week average baseline ────────────────────────────
-    # Since we don't have explicit day-of-week in the test snapshots, we
-    # approximate by computing the mean of ALL training target values per road
-    # (this is the "historical average" baseline — predicts the training-set
-    # average for every horizon). This is a standard baseline.
+    # ── 3. Historical average baseline ───────────────────────────────────────
     train_targets = []
     with torch.no_grad():
         for snap in train_dataset:
             train_targets.append(snap.y)
-    train_targets_stacked = torch.stack(train_targets)  # (T_train, 16, 3)
-    hist_avg = train_targets_stacked.mean(dim=0)  # (16, 3)
-    hist_pred = hist_avg.unsqueeze(0).expand_as(targets)  # (T, 16, 3)
+    train_targets_stacked = torch.stack(train_targets)
+    hist_avg = train_targets_stacked.mean(dim=0)
+    hist_pred = hist_avg.unsqueeze(0).expand_as(targets)
     hist_flat = hist_pred.reshape(-1, 3)
     hist_metrics = per_horizon_metrics(hist_flat, targets_flat, speed_mean, speed_std)
-    print("\n═══ Historical Average Baseline ═══")
+    print("\n=== Historical Average Baseline ===")
     for k, v in hist_metrics.items():
         print(f"  {k}: MAE={v['MAE']:.3f}  RMSE={v['RMSE']:.3f}  MAPE={v['MAPE']:.2f}%")
 
     # ── 4. Per-road analysis (best/worst) ─────────────────────────────────────
     per_road_mae = {}
     for r_idx in range(len(road_order)):
-        p = preds[:, r_idx, 0] * speed_std + speed_mean  # day-1 horizon
+        p = preds[:, r_idx, 0] * speed_std + speed_mean
         t = targets[:, r_idx, 0] * speed_std + speed_mean
         per_road_mae[road_order[r_idx]] = float((p - t).abs().mean())
 
@@ -174,27 +171,97 @@ def main():
 
     # ── 5. Spatial estimator leave-one-out CV ─────────────────────────────────
     road_coords = load_road_coords()
-    # Use first few test snapshots for spatial CV
-    spatial_speeds_list = []
+
+    # Collect at least 50 test snapshots (use all available)
+    spatial_speeds_predicted = []
+    spatial_speeds_observed = []
     with torch.no_grad():
-        count = 0
         for snap in test_dataset:
             out = model(snap.x, snap.edge_index, snap.edge_attr)
-            day0_speeds = (out[:, 0] * speed_std + speed_mean).numpy()
-            spatial_speeds_list.append(day0_speeds)
-            count += 1
-            if count >= 10:  # use up to 10 snapshots for CV
-                break
+            pred_speeds = (out[:, 0] * speed_std + speed_mean).numpy()
+            obs_speeds = (snap.y[:, 0] * speed_std + speed_mean).numpy()
+            spatial_speeds_predicted.append(pred_speeds)
+            spatial_speeds_observed.append(obs_speeds)
 
-    print("\n═══ Spatial Speed Estimator (Leave-One-Road-Out CV) ═══")
-    spatial_metrics = leave_one_out_cv(road_coords, spatial_speeds_list)
-    for method, m in spatial_metrics.items():
-        print(f"  {method}: MAE={m['MAE']:.3f}  RMSE={m['RMSE']:.3f}  MAPE={m['MAPE']:.2f}%")
+    # Use 50 test snapshots as specified in Task 2d ("at least 50 test snapshots (not 10)")
+    spatial_speeds_predicted = spatial_speeds_predicted[:50]
+    spatial_speeds_observed = spatial_speeds_observed[:50]
+    n_snapshots = len(spatial_speeds_predicted)
+    print(f"\n[eval] Using {n_snapshots} test snapshots for spatial CV", flush=True)
 
-    # ── 6. Assemble results.json ──────────────────────────────────────────────
+
+    # Strict CV (excludes near-duplicate roads within 0.5 km)
+    print("\n=== Spatial Estimator — Strict LOO CV (predicted speeds) ===")
+    strict_pred_metrics = leave_one_out_cv(road_coords, spatial_speeds_predicted, strict=True)
+    for method, m in strict_pred_metrics.items():
+        print(f"  {method}: MAE={m['MAE']:.3f} +/- {m['MAE_std']:.3f}  "
+              f"RMSE={m['RMSE']:.3f}  MAPE={m['MAPE']:.2f}%  (n={m['n_samples']})")
+
+    # Original CV (single exclusion only)
+    print("\n=== Spatial Estimator — Original LOO CV (predicted speeds) ===")
+    original_pred_metrics = leave_one_out_cv(road_coords, spatial_speeds_predicted, strict=False)
+    for method, m in original_pred_metrics.items():
+        print(f"  {method}: MAE={m['MAE']:.3f} +/- {m['MAE_std']:.3f}  "
+              f"RMSE={m['RMSE']:.3f}  MAPE={m['MAPE']:.2f}%  (n={m['n_samples']})")
+
+    # Strict CV on observed speeds
+    print("\n=== Spatial Estimator — Strict LOO CV (observed speeds) ===")
+    strict_obs_metrics = leave_one_out_cv(road_coords, spatial_speeds_observed, strict=True)
+    for method, m in strict_obs_metrics.items():
+        print(f"  {method}: MAE={m['MAE']:.3f} +/- {m['MAE_std']:.3f}  "
+              f"RMSE={m['RMSE']:.3f}  MAPE={m['MAPE']:.2f}%  (n={m['n_samples']})")
+
+    # Select estimator method from strict CV
+    idw_strict = strict_pred_metrics.get("idw", {}).get("MAE", float("inf"))
+    learned_strict = strict_pred_metrics.get("learned", {}).get("MAE", float("inf"))
+    # Require learned to beat IDW by at least 5% to justify its complexity
+    if learned_strict < idw_strict * 0.95:
+        selected_method = "learned"
+    else:
+        selected_method = "idw"
+    print(f"\n  Selected estimator method: {selected_method}")
+
+    # Update config.yaml with selected method
+    config["speed_estimator"]["method"] = selected_method
+    config_path = os.path.join(_MODEL_DIR, "config.yaml")
+    with open(config_path, "w") as f:
+        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+    print(f"  Updated {config_path}")
+
+    # ── 6. ETA sanity check ──────────────────────────────────────────────────
+    eta_csv_path = os.path.join(_DATA_DIR, "eta_check.csv")
+    eta_sanity = None
+    if os.path.exists(eta_csv_path):
+        eta_df = pd.read_csv(eta_csv_path)
+        if len(eta_df) > 0 and "our_eta_min" in eta_df.columns and "reference_eta_min" in eta_df.columns:
+            valid = eta_df.dropna(subset=["our_eta_min", "reference_eta_min"])
+            if len(valid) > 0:
+                abs_diff = (valid["our_eta_min"] - valid["reference_eta_min"]).abs()
+                eta_sanity = {
+                    "n_routes": len(valid),
+                    "mean_abs_diff_min": round(float(abs_diff.mean()), 2),
+                    "max_abs_diff_min": round(float(abs_diff.max()), 2),
+                }
+                print(f"\n=== ETA Sanity Check ===")
+
+                print(f"  {eta_sanity['n_routes']} reference routes")
+                print(f"  Mean |our - reference|: {eta_sanity['mean_abs_diff_min']:.2f} min")
+            else:
+                print("\n[eval] eta_check.csv exists but has no filled rows — skipping")
+        else:
+            print("\n[eval] eta_check.csv exists but has no data rows — skipping")
+    else:
+        print(f"\n[eval] {eta_csv_path} not found — create it and fill 5+ reference ETAs")
+
+    # ── 7. Assemble results.json ──────────────────────────────────────────────
     results = {
         "model": "A3T-GCN (Bangalore, 16 roads, daily)",
         "test_windows": num_test,
+        "date_range": {
+            "start": str(all_dates[0].date()),
+            "end": str(all_dates[-1].date()),
+            "days": len(all_dates),
+        },
         "speed_stats": {"mean_kmh": round(speed_mean, 2), "std_kmh": round(speed_std, 2)},
         "a3tgcn_per_horizon": model_metrics,
         "persistence_per_horizon": persist_metrics,
@@ -202,21 +269,29 @@ def main():
         "per_road_mae_day1": {k: round(v, 3) for k, v in per_road_mae.items()},
         "best_road": best_road,
         "worst_road": worst_road,
-        "spatial_estimator_loo_cv": spatial_metrics,
+        "spatial_estimator": {
+            "selected_method": selected_method,
+            "n_test_snapshots": n_snapshots,
+            "strict_cv_predicted_speeds": strict_pred_metrics,
+            "original_cv_predicted_speeds": original_pred_metrics,
+            "strict_cv_observed_speeds": strict_obs_metrics,
+        },
     }
+    if eta_sanity:
+        results["eta_sanity_check"] = eta_sanity
 
     results_path = os.path.join(_MODEL_DIR, "results.json")
     with open(results_path, "w") as f:
         json.dump(results, f, indent=2)
     print(f"\n[eval] Results saved to {results_path}")
 
-    # ── 7. Plots ──────────────────────────────────────────────────────────────
+    # ── 8. Plots ──────────────────────────────────────────────────────────────
     try:
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
-        # ── 7a. Training curve (if CSV exists) ───────────────────────────────
+        # ── 8a. Training curve (if CSV exists) ───────────────────────────────
         log_csv = os.path.join(_MODEL_DIR, "training_log.csv")
         if os.path.exists(log_csv):
             log_df = pd.read_csv(log_csv)
@@ -233,7 +308,7 @@ def main():
             plt.close(fig)
             print("[eval] Saved training_curve.png")
 
-        # ── 7b. Error vs horizon ─────────────────────────────────────────────
+        # ── 8b. Error vs horizon ─────────────────────────────────────────────
         fig, ax = plt.subplots(figsize=(8, 5))
         horizons = ["Day 1", "Day 2", "Day 3"]
         for label, metrics_dict, color in [
@@ -252,7 +327,7 @@ def main():
         plt.close(fig)
         print("[eval] Saved error_vs_horizon.png")
 
-        # ── 7c. Predicted vs observed (best + worst road) ─────────────────────
+        # ── 8c. Predicted vs observed (best + worst road) ─────────────────────
         fig, axes = plt.subplots(1, 2, figsize=(14, 5))
         for ax, road_name, title_suffix in [
             (axes[0], best_road, "Best"),

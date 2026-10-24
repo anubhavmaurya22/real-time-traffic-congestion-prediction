@@ -103,8 +103,12 @@ def score_route(route_geojson, speed_estimator, predicted_speeds, day_offset,
     """
     Score a single OSRM route.
 
+    Distance scaling: the sum of chord distances between sampled points
+    under-estimates real road distance. We scale by (OSRM distance / chord sum)
+    so ETA and avg_speed are consistent with the OSRM road distance.
+
     Returns:
-        dict with eta_pred_min, eta_static_min, avg_speed_kmh, distance_km,
+        dict with eta_pred_min, eta_avg_speed_min, avg_speed_kmh, distance_km,
         geometry (GeoJSON LineString), coverage_warning.
     """
     coords = route_geojson["geometry"]["coordinates"]
@@ -113,9 +117,11 @@ def score_route(route_geojson, speed_estimator, predicted_speeds, day_offset,
 
     sampled = sample_points_along_line(coords, interval_m=sample_interval_m)
 
-    # Compute ETA using predicted speeds at each sampled point
+    # Sum of chord (great-circle) distances between sampled points
+    chord_sum_km = 0.0
+    # Accumulate time weighted by chord segments (before scaling)
     total_time_pred_h = 0.0
-    total_time_static_h = 0.0
+    total_time_avg_h = 0.0
     any_coverage_warning = False
 
     for i in range(len(sampled) - 1):
@@ -125,6 +131,8 @@ def score_route(route_geojson, speed_estimator, predicted_speeds, day_offset,
 
         if seg_km < 0.001:
             continue  # skip near-zero segments
+
+        chord_sum_km += seg_km
 
         # Speed at midpoint of segment
         mid_lat = (lat1 + lat2) / 2
@@ -136,11 +144,16 @@ def score_route(route_geojson, speed_estimator, predicted_speeds, day_offset,
             any_coverage_warning = True
 
         total_time_pred_h += seg_km / speed_pred
-        total_time_static_h += seg_km / training_mean_speed
+        total_time_avg_h += seg_km / training_mean_speed
 
-    eta_pred_min = total_time_pred_h * 60.0
-    eta_static_min = total_time_static_h * 60.0
-    avg_speed = distance_km / total_time_pred_h if total_time_pred_h > 0 else training_mean_speed
+    # Scale factor: OSRM road distance / chord distance sum
+    # This corrects for the fact that straight-line segments undercount
+    # actual road distance. Both ETA values are scaled equally.
+    scale = distance_km / chord_sum_km if chord_sum_km > 0 else 1.0
+
+    eta_pred_min = total_time_pred_h * scale * 60.0
+    eta_avg_speed_min = total_time_avg_h * scale * 60.0
+    avg_speed = distance_km / (total_time_pred_h * scale) if total_time_pred_h > 0 else training_mean_speed
 
     return {
         "geometry": {
@@ -149,7 +162,7 @@ def score_route(route_geojson, speed_estimator, predicted_speeds, day_offset,
         },
         "distance_km": round(distance_km, 2),
         "eta_pred_min": round(eta_pred_min, 1),
-        "eta_static_min": round(eta_static_min, 1),
+        "eta_avg_speed_min": round(eta_avg_speed_min, 1),
         "avg_speed_kmh": round(avg_speed, 1),
         "coverage_warning": any_coverage_warning,
     }
@@ -159,6 +172,11 @@ def score_all_routes(osrm_routes, speed_estimator, predicted_speeds,
                      day_offset, training_mean_speed):
     """
     Score all OSRM routes and pick the recommended one.
+
+    time_saved_min: ETA of OSRM's default first route minus ETA of the
+    recommended route, both scored with predicted speeds. If the recommended
+    route IS the default route, time_saved = 0.
+
     Returns the full response dict.
     """
     scored = []
@@ -176,20 +194,31 @@ def score_all_routes(osrm_routes, speed_estimator, predicted_speeds,
         for i, r in enumerate(scored):
             r["recommended"] = (i == best_idx)
 
-        best = scored[best_idx]
-        # Time saved = difference between worst and best predicted ETA
-        # (or between static and predicted for the recommended route)
-        time_saved = best["eta_static_min"] - best["eta_pred_min"]
-        improvement_pct = (time_saved / best["eta_static_min"] * 100
-                           if best["eta_static_min"] > 0 else 0.0)
+        # Default route is OSRM's first route (index 0)
+        default_eta = scored[0]["eta_pred_min"]
+        best_eta = scored[best_idx]["eta_pred_min"]
+
+        # Time saved = default route ETA - recommended route ETA
+        # If the recommended route IS the default, time_saved = 0
+        if best_idx == 0:
+            time_saved = 0.0
+            improvement_pct = 0.0
+        else:
+            time_saved = default_eta - best_eta
+            improvement_pct = (time_saved / default_eta * 100
+                               if default_eta > 0 else 0.0)
+
+        default_route_eta = default_eta
     else:
         time_saved = 0.0
         improvement_pct = 0.0
+        default_route_eta = 0.0
 
     any_coverage = any(r["coverage_warning"] for r in scored)
 
     return {
         "routes": scored,
+        "default_route_eta_min": round(default_route_eta, 1),
         "time_saved_min": round(time_saved, 1),
         "improvement_pct": round(improvement_pct, 1),
         "coverage_warning": any_coverage,

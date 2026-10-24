@@ -189,8 +189,8 @@
           <span class="material-symbols-outlined">power_settings_new</span>
         </div>
         <div>
-          <h2>STRATOS_v2.4</h2>
-          <p>Prediction Engine</p>
+          <h2>StreetFlow</h2>
+          <p>Live · A3T-GCN</p>
         </div>
       </div>
       <nav class="side-nav">
@@ -250,18 +250,18 @@
           </div>
         </div>
 
-        <!-- Alternative Route Card -->
+        <!-- OSRM Default + Alternative Routes Card -->
         <div class="glass-card" id="standardCard" style="opacity:.7;transition:opacity .2s;">
           <div class="card-header">
             <div>
-              <span class="card-tag muted">Alternative Routes</span>
-              <div class="card-title">Baseline</div>
+              <span class="card-tag muted">OSRM Default Route</span>
+              <div class="card-title" id="defaultRouteTitle">Default</div>
             </div>
             <div class="eta-badge muted" id="etaBeta">—</div>
           </div>
           <div class="monitor-row">
             <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 0;">route</span>
-            <span class="txt" id="betaStatus">Monitoring…</span>
+            <span class="txt" id="betaStatus">Waiting for route…</span>
           </div>
         </div>
 
@@ -312,11 +312,11 @@
 
           <!-- Day selector -->
           <div>
-            <label class="field-label">Departure Day</label>
+            <label class="field-label">Forecast Day</label>
             <div class="day-selector">
-              <button class="day-btn active" data-offset="0">Today</button>
-              <button class="day-btn" data-offset="1">Tomorrow</button>
-              <button class="day-btn" data-offset="2">Day After</button>
+              <button class="day-btn active" data-offset="0" id="dayBtn0">Day 1</button>
+              <button class="day-btn" data-offset="1" id="dayBtn1">Day 2</button>
+              <button class="day-btn" data-offset="2" id="dayBtn2">Day 3</button>
             </div>
           </div>
 
@@ -662,6 +662,13 @@
     if (!res.ok) { setResult('Error loading predictions: ' + res.status, 'error'); return; }
     const data = await res.json();
     const speeds = data.predicted_speeds_kmh;
+    // Update day buttons with real forecast dates
+    if (data.forecast_dates && data.forecast_dates.length >= 3) {
+      for (var di = 0; di < 3; di++) {
+        var btn = document.getElementById('dayBtn' + di);
+        if (btn) btn.textContent = data.forecast_dates[di];
+      }
+    }
     sensorMarkers.forEach(m => map.removeLayer(m));
     sensorMarkers = [];
     sensorLocations.forEach(s => {
@@ -729,8 +736,13 @@
 
       if (!res.ok) {
         const err = await res.json().catch(function() { return { detail: res.statusText }; });
-        setResult('Error ' + res.status + ': ' + (err.detail || JSON.stringify(err)), 'error');
-        document.getElementById('etaBadge').textContent = 'ERR';
+        var errMsg = '';
+        if (res.status === 400) errMsg = 'Bad request: ' + (err.detail || 'Invalid coordinates or parameters.');
+        else if (res.status === 429) errMsg = 'Rate limit exceeded — please wait a minute before trying again.';
+        else if (res.status === 502) errMsg = 'Route server (OSRM) unavailable — try again shortly.';
+        else errMsg = 'Error ' + res.status + ': ' + (err.detail || JSON.stringify(err));
+        setResult(errMsg, 'error');
+        document.getElementById('etaBadge').textContent = res.status;
         return;
       }
 
@@ -769,31 +781,38 @@
       var rec = data.routes.find(function(r) { return r.recommended; });
       if (rec) {
         document.getElementById('etaBadge').textContent = rec.eta_pred_min.toFixed(1) + ' min';
-        document.getElementById('efficiencyLabel').innerHTML =
-          'Time saved: <strong>' + data.time_saved_min.toFixed(1) + ' min (' + data.improvement_pct.toFixed(1) + '%)</strong>';
+        if (data.time_saved_min > 0) {
+          document.getElementById('efficiencyLabel').innerHTML =
+            'vs default route: <strong>' + data.time_saved_min.toFixed(1) + ' min faster (' + data.improvement_pct.toFixed(1) + '%)</strong>';
+        } else {
+          document.getElementById('efficiencyLabel').innerHTML =
+            'Recommended route <strong>is the default route</strong>';
+        }
       }
 
-      var alts = data.routes.filter(function(r) { return !r.recommended; });
-      if (alts.length > 0) {
-        document.getElementById('etaBeta').textContent = alts.map(function(a) { return a.eta_pred_min.toFixed(1) + ' min'; }).join(' / ');
-        document.getElementById('betaStatus').textContent = alts.length + ' alternative' + (alts.length > 1 ? 's' : '') + ' · ' + alts.map(function(a) { return a.distance_km + ' km'; }).join(', ');
+      // Show OSRM default route (first route) info
+      if (data.routes.length > 0) {
+        var defRoute = data.routes[0];
+        document.getElementById('etaBeta').textContent = defRoute.eta_pred_min.toFixed(1) + ' min';
+        document.getElementById('defaultRouteTitle').textContent = 'Default (' + defRoute.distance_km + ' km)';
+        document.getElementById('betaStatus').textContent =
+          'ETA at avg speed: ' + defRoute.eta_avg_speed_min.toFixed(1) + ' min' +
+          (data.routes.length > 1 ? ' · ' + (data.routes.length - 1) + ' alt(s)' : '');
         document.getElementById('standardCard').style.opacity = '1';
-      } else {
-        document.getElementById('etaBeta').textContent = '—';
-        document.getElementById('betaStatus').textContent = 'No alternatives';
       }
 
       // Result text
       var resultText = '';
-      data.routes.forEach(function(r) {
-        resultText += (r.recommended ? '★ RECOMMENDED' : '  ALTERNATIVE') + '\n';
+      data.routes.forEach(function(r, idx) {
+        var tag = r.recommended ? '★ RECOMMENDED' : (idx === 0 ? '  DEFAULT' : '  ALTERNATIVE');
+        resultText += tag + '\n';
         resultText += '  Distance: ' + r.distance_km + ' km\n';
-        resultText += '  ETA (predicted): ' + r.eta_pred_min.toFixed(1) + ' min\n';
-        resultText += '  ETA (static):    ' + r.eta_static_min.toFixed(1) + ' min\n';
+        resultText += '  ETA (predicted):  ' + r.eta_pred_min.toFixed(1) + ' min\n';
+        resultText += '  ETA (avg speed):  ' + r.eta_avg_speed_min.toFixed(1) + ' min\n';
         resultText += '  Avg speed: ' + r.avg_speed_kmh.toFixed(1) + ' km/h\n\n';
       });
       if (data.time_saved_min > 0) {
-        resultText += 'TIME SAVED: ' + data.time_saved_min.toFixed(1) + ' min (' + data.improvement_pct.toFixed(1) + '%)';
+        resultText += 'VS DEFAULT: ' + data.time_saved_min.toFixed(1) + ' min faster (' + data.improvement_pct.toFixed(1) + '%)';
       }
       setResult(resultText, 'success');
 

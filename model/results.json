@@ -1,0 +1,157 @@
+{
+  "model": "A3T-GCN (Bangalore, 16 roads, daily)",
+  "test_windows": 189,
+  "date_range": {
+    "start": "2022-01-01",
+    "end": "2024-08-09",
+    "days": 952
+  },
+  "speed_stats": {
+    "mean_kmh": 40.2,
+    "std_kmh": 10.85
+  },
+  "a3tgcn_per_horizon": {
+    "day_1": {
+      "MAE": 8.519,
+      "RMSE": 10.638,
+      "MAPE": 24.31
+    },
+    "day_2": {
+      "MAE": 8.78,
+      "RMSE": 10.896,
+      "MAPE": 25.12
+    },
+    "day_3": {
+      "MAE": 8.845,
+      "RMSE": 10.955,
+      "MAPE": 25.35
+    }
+  },
+  "persistence_per_horizon": {
+    "day_1": {
+      "MAE": 7.049,
+      "RMSE": 11.477,
+      "MAPE": 19.69
+    },
+    "day_2": {
+      "MAE": 9.548,
+      "RMSE": 13.465,
+      "MAPE": 26.54
+    },
+    "day_3": {
+      "MAE": 10.783,
+      "RMSE": 14.319,
+      "MAPE": 29.98
+    }
+  },
+  "historical_avg_per_horizon": {
+    "day_1": {
+      "MAE": 8.719,
+      "RMSE": 10.825,
+      "MAPE": 25.05
+    },
+    "day_2": {
+      "MAE": 8.711,
+      "RMSE": 10.82,
+      "MAPE": 24.99
+    },
+    "day_3": {
+      "MAE": 8.718,
+      "RMSE": 10.827,
+      "MAPE": 25.03
+    }
+  },
+  "per_road_mae_day1": {
+    "100 Feet Road": 8.72,
+    "CMH Road": 9.843,
+    "Marathahalli Bridge": 7.661,
+    "Sony World Junction": 8.235,
+    "Sarjapur Road": 7.483,
+    "Trinity Circle": 8.166,
+    "Anil Kumble Circle": 8.025,
+    "Jayanagar 4th Block": 9.229,
+    "South End Circle": 7.806,
+    "Hebbal Flyover": 8.091,
+    "Ballari Road": 8.072,
+    "Yeshwanthpur Circle": 8.27,
+    "Tumkur Road": 9.46,
+    "ITPL Main Road": 6.809,
+    "Silk Board Junction": 10.376,
+    "Hosur Road": 10.057
+  },
+  "best_road": "ITPL Main Road",
+  "worst_road": "Silk Board Junction",
+  "spatial_estimator": {
+    "selected_method": "idw",
+    "n_test_snapshots": 189,
+    "strict_cv_predicted_speeds": {
+      "idw": {
+        "MAE": 1.582,
+        "RMSE": 2.729,
+        "MAPE": 3.71,
+        "MAE_std": 2.224,
+        "n_samples": 3024
+      },
+      "learned": {
+        "MAE": 1.785,
+        "RMSE": 2.932,
+        "MAPE": 4.28,
+        "MAE_std": 2.326,
+        "n_samples": 3024
+      },
+      "global_mean": {
+        "MAE": 2.385,
+        "RMSE": 3.336,
+        "MAPE": 5.74,
+        "MAE_std": 2.333,
+        "n_samples": 3024
+      }
+    },
+    "original_cv_predicted_speeds": {
+      "idw": {
+        "MAE": 0.428,
+        "RMSE": 1.571,
+        "MAPE": 0.97,
+        "MAE_std": 1.512,
+        "n_samples": 3024
+      },
+      "learned": {
+        "MAE": 0.609,
+        "RMSE": 1.731,
+        "MAPE": 1.42,
+        "MAE_std": 1.62,
+        "n_samples": 3024
+      },
+      "global_mean": {
+        "MAE": 2.385,
+        "RMSE": 3.336,
+        "MAPE": 5.74,
+        "MAE_std": 2.333,
+        "n_samples": 3024
+      }
+    },
+    "strict_cv_observed_speeds": {
+      "idw": {
+        "MAE": 10.47,
+        "RMSE": 13.002,
+        "MAPE": 29.26,
+        "MAE_std": 7.71,
+        "n_samples": 3024
+      },
+      "learned": {
+        "MAE": 10.316,
+        "RMSE": 13.059,
+        "MAPE": 28.96,
+        "MAE_std": 8.007,
+        "n_samples": 3024
+      },
+      "global_mean": {
+        "MAE": 8.65,
+        "RMSE": 10.746,
+        "MAPE": 24.55,
+        "MAE_std": 6.377,
+        "n_samples": 3024
+      }
+    }
+  }
+}

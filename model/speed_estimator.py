@@ -8,7 +8,11 @@ Two methods:
   2. Learned: a gradient-boosting regressor taking (lat, lng, distances to
      k nearest roads, their predicted speeds, day_offset) → speed.
 
-Evaluated via leave-one-road-out cross-validation (see evaluate_estimator.py).
+Evaluated via leave-one-road-out cross-validation.
+
+Strict CV: roads within 0.5 km of the held-out road are also excluded to
+avoid coordinate-duplicate leakage (e.g. 100 Feet Road / CMH Road share
+the same area centroid).
 """
 
 import os
@@ -57,6 +61,23 @@ def load_config():
     config_path = os.path.join(_MODEL_DIR, "config.yaml")
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
+
+
+def find_near_duplicates(road_coords, threshold_km=0.5):
+    """
+    For each road index, return the set of road indices within threshold_km.
+    Includes the road itself.
+    """
+    near = {}
+    for r in road_coords:
+        near[r["index"]] = {r["index"]}
+        for other in road_coords:
+            if other["index"] == r["index"]:
+                continue
+            d = haversine_km(r["lat"], r["lng"], other["lat"], other["lng"])
+            if d <= threshold_km:
+                near[r["index"]].add(other["index"])
+    return near
 
 
 # ── IDW estimator ────────────────────────────────────────────────────────────
@@ -113,30 +134,30 @@ def build_features(lat, lng, road_coords, predicted_speeds, day_offset, k=5):
 
 def train_learned_estimator(road_coords, all_predicted_speeds, save_path=None):
     """
-    Train a gradient-boosting regressor using leave-one-road-out data.
+    Train a gradient-boosting regressor using nested leave-one-road-out data.
+    Excludes held-out road AND its near-duplicates from training features.
     all_predicted_speeds: list of arrays, each (16,) for different snapshots/days.
-    Returns the trained model and training metrics.
+    Returns the trained model.
     """
     from sklearn.ensemble import GradientBoostingRegressor
 
     config = load_config()
     k = config["speed_estimator"]["k_nearest"]
+    near_dupes = find_near_duplicates(road_coords)
 
     X_all, y_all = [], []
     for speeds in all_predicted_speeds:
         for day_offset in range(3):
             for hold_out_road in road_coords:
                 ho_idx = hold_out_road["index"]
-                # Build features using all OTHER roads' speeds
-                other_coords = [r for r in road_coords if r["index"] != ho_idx]
-                other_speeds_map = {r["index"]: speeds[r["index"]] for r in other_coords}
-                # Re-index for feature building
-                reindexed_speeds = list(other_speeds_map.values())
+                excluded = near_dupes.get(ho_idx, {ho_idx})
+                # Build features using only roads NOT in the exclusion set
+                other_coords = [r for r in road_coords if r["index"] not in excluded]
+                if len(other_coords) < 2:
+                    continue
                 feats = build_features(
                     hold_out_road["lat"], hold_out_road["lng"],
-                    other_coords,
-                    # Use full speeds array but IDW will only use other_coords
-                    speeds,
+                    other_coords, speeds,
                     day_offset, k=min(k, len(other_coords))
                 )
                 X_all.append(feats)
@@ -228,11 +249,15 @@ class SpeedEstimator:
 
 # ── Leave-one-road-out cross-validation ───────────────────────────────────────
 
-def leave_one_out_cv(road_coords, predicted_speeds_list):
+def leave_one_out_cv(road_coords, predicted_speeds_list, strict=True):
     """
     Evaluate IDW, learned, and global-mean baselines via leave-one-road-out CV.
+
+    If strict=True, roads within 0.5 km of the held-out road are also excluded
+    (prevents coordinate-duplicate leakage).
+
     predicted_speeds_list: list of (16,) arrays (one per test snapshot).
-    Returns dict with metrics per method.
+    Returns dict with metrics per method, plus per-road breakdown.
     """
     from sklearn.ensemble import GradientBoostingRegressor
 
@@ -241,6 +266,8 @@ def leave_one_out_cv(road_coords, predicted_speeds_list):
     power = config["speed_estimator"]["idw_power"]
     min_speed = config["speed_estimator"]["min_speed_kmh"]
 
+    near_dupes = find_near_duplicates(road_coords) if strict else None
+
     results = {"idw": [], "learned": [], "global_mean": []}
 
     for speeds in predicted_speeds_list:
@@ -248,13 +275,20 @@ def leave_one_out_cv(road_coords, predicted_speeds_list):
 
         for hold_idx in range(len(road_coords)):
             held_road = road_coords[hold_idx]
-            true_speed = speeds[held_road["index"]]
+            ho_idx = held_road["index"]
+            true_speed = speeds[ho_idx]
+
+            # Determine exclusion set
+            if strict and near_dupes:
+                excluded = near_dupes[ho_idx]
+            else:
+                excluded = {ho_idx}
 
             # Global mean baseline
             results["global_mean"].append((true_speed, global_mean))
 
-            # IDW: exclude held-out road
-            other_coords = [r for r in road_coords if r["index"] != held_road["index"]]
+            # IDW: exclude held-out road (and near-dupes if strict)
+            other_coords = [r for r in road_coords if r["index"] not in excluded]
             idw_pred = idw_speed(
                 held_road["lat"], held_road["lng"],
                 other_coords, speeds,
@@ -263,19 +297,33 @@ def leave_one_out_cv(road_coords, predicted_speeds_list):
             )
             results["idw"].append((true_speed, idw_pred))
 
-    # Learned: train k-fold style (train on 15, predict held-out)
+    # Learned: nested LOO — train on other roads, predict held-out
     for speeds in predicted_speeds_list:
         for hold_idx in range(len(road_coords)):
             held_road = road_coords[hold_idx]
-            true_speed = speeds[held_road["index"]]
-            other_coords = [r for r in road_coords if r["index"] != held_road["index"]]
+            ho_idx = held_road["index"]
+            true_speed = speeds[ho_idx]
 
-            # Build training data from other roads
+            if strict and near_dupes:
+                excluded = near_dupes[ho_idx]
+            else:
+                excluded = {ho_idx}
+
+            other_coords = [r for r in road_coords if r["index"] not in excluded]
+
+            # Build training data from other roads, also excluding near-dupes
+            # from each training road's features (nested exclusion)
             X_train, y_train = [], []
             for r in other_coords:
+                # For training features: exclude the current training road's
+                # own near-duplicates from its feature neighbors
+                r_excluded = near_dupes[r["index"]] if (strict and near_dupes) else {r["index"]}
+                feat_coords = [rc for rc in road_coords if rc["index"] not in r_excluded]
+                if len(feat_coords) < 2:
+                    continue
                 feats = build_features(
-                    r["lat"], r["lng"], other_coords, speeds,
-                    day_offset=0, k=min(k, len(other_coords))
+                    r["lat"], r["lng"], feat_coords, speeds,
+                    day_offset=0, k=min(k, len(feat_coords))
                 )
                 X_train.append(feats)
                 y_train.append(speeds[r["index"]])
@@ -290,9 +338,11 @@ def leave_one_out_cv(road_coords, predicted_speeds_list):
             )
             gbr.fit(np.array(X_train), np.array(y_train))
 
+            # Test features: exclude the held-out road (and near-dupes)
+            test_feat_coords = [r for r in road_coords if r["index"] not in excluded]
             feats_test = build_features(
-                held_road["lat"], held_road["lng"], other_coords, speeds,
-                day_offset=0, k=min(k, len(other_coords))
+                held_road["lat"], held_road["lng"], test_feat_coords, speeds,
+                day_offset=0, k=min(k, len(test_feat_coords))
             )
             pred = gbr.predict(feats_test.reshape(1, -1))[0]
             pred = max(pred, min_speed)
@@ -305,9 +355,16 @@ def leave_one_out_cv(road_coords, predicted_speeds_list):
         preds = np.array([p[1] for p in pairs])
         mae = float(np.abs(trues - preds).mean())
         rmse = float(np.sqrt(np.mean((trues - preds) ** 2)))
+        std_ae = float(np.abs(trues - preds).std())
         mask = np.abs(trues) > 1.0
         mape = float(np.mean(np.abs((trues[mask] - preds[mask]) / trues[mask])) * 100) if mask.any() else 0.0
-        metrics[method_name] = {"MAE": round(mae, 3), "RMSE": round(rmse, 3), "MAPE": round(mape, 2)}
+        metrics[method_name] = {
+            "MAE": round(mae, 3),
+            "RMSE": round(rmse, 3),
+            "MAPE": round(mape, 2),
+            "MAE_std": round(std_ae, 3),
+            "n_samples": len(pairs),
+        }
 
     return metrics
 
@@ -325,4 +382,11 @@ if __name__ == "__main__":
     s2, warn2 = est.speed_at(13.5, 78.0, speeds, day_offset=0)
     print(f"IDW speed at (13.5, 78.0): {s2:.1f} km/h, coverage_warning={warn2}")
     assert warn2, "Should have coverage warning for far-away point"
+
+    # Check near-duplicate detection
+    near = find_near_duplicates(roads)
+    for idx, dupes in near.items():
+        if len(dupes) > 1:
+            names = [r["road_name"] for r in roads if r["index"] in dupes]
+            print(f"  Near-duplicate group: {names}")
     print("\nSpeed estimator: OK")
