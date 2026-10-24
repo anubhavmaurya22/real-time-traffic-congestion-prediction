@@ -105,19 +105,45 @@
     .field-label{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--on-surface-var);display:block;margin-bottom:5px;}
     .styled-select{width:100%;padding:8px 10px;background:var(--surface-container);border:1px solid var(--outline-var);border-radius:2px;color:var(--on-surface);font-family:var(--font-mono);font-size:12px;letter-spacing:.04em;outline:none;transition:border-color .15s;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2399907c'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;}
     .styled-select:focus{border-color:var(--primary);}
+    /* Text input for autocomplete */
+    .styled-input{width:100%;padding:8px 10px;background:var(--surface-container);border:1px solid var(--outline-var);border-radius:2px;color:var(--on-surface);font-family:var(--font-mono);font-size:12px;letter-spacing:.04em;outline:none;transition:border-color .15s;}
+    .styled-input:focus{border-color:var(--primary);}
+    .styled-input::placeholder{color:var(--outline);}
+    /* Autocomplete dropdown */
+    .autocomplete-list{position:absolute;z-index:600;width:100%;max-height:200px;overflow-y:auto;background:var(--surface-container);border:1px solid var(--outline-var);border-top:none;border-radius:0 0 2px 2px;display:none;}
+    .autocomplete-list.show{display:block;}
+    .autocomplete-item{padding:8px 10px;font-family:var(--font-mono);font-size:11px;color:var(--on-surface-var);cursor:pointer;transition:background .1s;}
+    .autocomplete-item:hover,.autocomplete-item.active{background:var(--surface-high);color:var(--primary);}
+    .input-wrap{position:relative;}
     .btn-find-route{width:100%;padding:12px;background:var(--primary);color:var(--on-primary);border:none;cursor:pointer;font-family:var(--font-mono);font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;border-radius:2px;transition:opacity .15s,transform .1s;margin-top:4px;}
     .btn-find-route:hover{opacity:.88;} .btn-find-route:active{transform:scale(.99);} .btn-find-route:disabled{opacity:.4;cursor:not-allowed;}
     #result{font-family:var(--font-mono);font-size:11px;line-height:1.7;letter-spacing:.04em;color:var(--on-surface-var);background:var(--surface-container);border:1px solid var(--outline-var);border-radius:2px;padding:10px 12px;white-space:pre-wrap;min-height:48px;}
     #result.success{border-color:var(--primary-container);color:var(--on-surface);}
     #result.error{border-color:#93000a;color:var(--error);}
-    /* Geolocation */
-    .geo-row{display:flex;align-items:center;gap:8px;margin-top:6px;}
+    /* Geolocation & pick-on-map buttons */
+    .geo-row{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;}
     .btn-geo{display:flex;align-items:center;gap:6px;padding:6px 10px;background:none;border:1px solid var(--outline-var);border-radius:2px;color:var(--on-surface-var);font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:border-color .15s,color .15s;white-space:nowrap;}
     .btn-geo:hover{border-color:var(--primary);color:var(--primary);}
     .btn-geo:disabled{opacity:.4;cursor:not-allowed;}
     .btn-geo .material-symbols-outlined{font-size:14px;}
+    .btn-swap{display:flex;align-items:center;justify-content:center;width:30px;height:30px;background:none;border:1px solid var(--outline-var);border-radius:2px;color:var(--on-surface-var);cursor:pointer;transition:border-color .15s,color .15s;margin:4px auto;}
+    .btn-swap:hover{border-color:var(--primary);color:var(--primary);}
+    .btn-swap .material-symbols-outlined{font-size:16px;}
     #geo-snap-info{font-family:var(--font-mono);font-size:10px;letter-spacing:.04em;line-height:1.5;color:var(--on-surface-var);padding:6px 8px;background:var(--surface-container);border-left:2px solid var(--primary-container);border-radius:0 2px 2px 0;display:none;margin-top:4px;}
     #geo-snap-info.error{border-left-color:#93000a;color:var(--error);}
+    /* Coverage warning banner */
+    .coverage-warning{display:none;padding:8px 12px;background:rgba(147,0,10,0.15);border:1px solid rgba(255,180,171,0.3);border-radius:2px;font-family:var(--font-mono);font-size:10px;color:var(--error);line-height:1.5;margin-top:6px;}
+    .coverage-warning.show{display:block;}
+    /* Day selector */
+    .day-selector{display:flex;gap:4px;margin-top:4px;}
+    .day-btn{flex:1;padding:6px;background:var(--surface-container);border:1px solid var(--outline-var);border-radius:2px;color:var(--on-surface-var);font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;text-align:center;transition:all .15s;}
+    .day-btn:hover{border-color:var(--primary);color:var(--primary);}
+    .day-btn.active{background:rgba(242,202,80,.1);border-color:var(--primary);color:var(--primary);}
+    /* Loading spinner */
+    .loading-spinner{display:none;text-align:center;padding:12px;}
+    .loading-spinner.show{display:block;}
+    .spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--outline-var);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
     .legend-card{display:flex;flex-direction:column;gap:6px;}
     .legend-row{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;color:var(--on-surface-var);}
     .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
@@ -202,7 +228,7 @@
         <div class="glass-card active-route" id="optimizedCard">
           <div class="card-header">
             <div>
-              <span class="card-tag">Predicted Route</span>
+              <span class="card-tag">Recommended Route</span>
               <div class="card-title" id="routeAlphaTitle">AI-Optimized</div>
             </div>
             <div class="eta-badge primary" id="etaBadge">—</div>
@@ -210,25 +236,25 @@
           <div class="route-nodes" id="routeNodes">
             <div class="node-row">
               <div class="node-dot"></div>
-              <span class="node-label" id="nodeOrigin">Select source</span>
+              <span class="node-label" id="nodeOrigin">Enter origin</span>
             </div>
             <div class="node-connector"><div class="connector-line"></div></div>
             <div class="node-row">
               <div class="node-dot active"></div>
-              <span class="node-label bright" id="nodeDest">Select target</span>
+              <span class="node-label bright" id="nodeDest">Enter destination</span>
             </div>
           </div>
           <div class="card-footer">
-            <span class="efficiency-label" id="efficiencyLabel">Efficiency: <strong>—</strong></span>
+            <span class="efficiency-label" id="efficiencyLabel">Time saved: <strong>—</strong></span>
             <button class="btn-execute" id="routeBtn">Execute</button>
           </div>
         </div>
 
-        <!-- Standard Route Card -->
+        <!-- Alternative Route Card -->
         <div class="glass-card" id="standardCard" style="opacity:.7;transition:opacity .2s;">
           <div class="card-header">
             <div>
-              <span class="card-tag muted">Static Route</span>
+              <span class="card-tag muted">Alternative Routes</span>
               <div class="card-title">Baseline</div>
             </div>
             <div class="eta-badge muted" id="etaBeta">—</div>
@@ -244,22 +270,73 @@
         <!-- Route Optimizer -->
         <div class="glass-card optimizer-section">
           <span class="card-tag" style="margin-bottom:12px;">Route Optimizer</span>
+
+          <!-- Origin input with autocomplete -->
           <div>
-            <label class="field-label" for="source">Source Road</label>
-            <select class="styled-select" id="source"></select>
+            <label class="field-label" for="originInput">Origin</label>
+            <div class="input-wrap">
+              <input class="styled-input" type="text" id="originInput"
+                     placeholder="Search place in Bangalore…" autocomplete="off" />
+              <div class="autocomplete-list" id="originSuggestions"></div>
+            </div>
             <div class="geo-row">
-              <button class="btn-geo" id="geoBtn" title="Snap to nearest known road from your GPS position">
+              <button class="btn-geo" id="geoBtn" title="Use your GPS location as origin">
                 <span class="material-symbols-outlined">my_location</span>Use my location
+              </button>
+              <button class="btn-geo" id="pickOriginBtn" title="Click on map to set origin">
+                <span class="material-symbols-outlined">pin_drop</span>Pick on map
               </button>
             </div>
             <div id="geo-snap-info"></div>
           </div>
+
+          <!-- Swap button -->
+          <button class="btn-swap" id="swapBtn" title="Swap origin and destination">
+            <span class="material-symbols-outlined">swap_vert</span>
+          </button>
+
+          <!-- Destination input with autocomplete -->
           <div>
-            <label class="field-label" for="target">Target Sensor</label>
-            <select class="styled-select" id="target"></select>
+            <label class="field-label" for="destInput">Destination</label>
+            <div class="input-wrap">
+              <input class="styled-input" type="text" id="destInput"
+                     placeholder="Search place in Bangalore…" autocomplete="off" />
+              <div class="autocomplete-list" id="destSuggestions"></div>
+            </div>
+            <div class="geo-row">
+              <button class="btn-geo" id="pickDestBtn" title="Click on map to set destination">
+                <span class="material-symbols-outlined">pin_drop</span>Pick on map
+              </button>
+            </div>
           </div>
+
+          <!-- Day selector -->
+          <div>
+            <label class="field-label">Departure Day</label>
+            <div class="day-selector">
+              <button class="day-btn active" data-offset="0">Today</button>
+              <button class="day-btn" data-offset="1">Tomorrow</button>
+              <button class="day-btn" data-offset="2">Day After</button>
+            </div>
+          </div>
+
+          <!-- Coverage warning banner -->
+          <div class="coverage-warning" id="coverageWarning">
+            ⚠ Some points on this route are far from known sensor roads.
+            Speed estimates in those areas use the city-wide average and may be less accurate.
+          </div>
+
           <button class="btn-find-route" id="findRouteBtn">Compute Route</button>
-          <div id="result">Select source &amp; target roads, then click Compute Route.</div>
+
+          <!-- Loading spinner -->
+          <div class="loading-spinner" id="loadingSpinner">
+            <div class="spinner"></div>
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--on-surface-var);margin-top:6px;">
+              COMPUTING OPTIMAL ROUTE…
+            </div>
+          </div>
+
+          <div id="result">Enter origin &amp; destination, then click Compute Route.</div>
         </div>
 
         <hr class="panel-divider"/>
@@ -271,8 +348,8 @@
             <div class="legend-row"><div class="legend-dot" style="background:#22c55e;"></div>Fast (&gt;80 km/h)</div>
             <div class="legend-row"><div class="legend-dot" style="background:#eab308;"></div>Moderate (48–80 km/h)</div>
             <div class="legend-row"><div class="legend-dot" style="background:#ef4444;"></div>Congested (&lt;48 km/h)</div>
-            <div class="legend-row"><div class="legend-dot" style="background:#f2ca50;"></div>Predicted Route (gold)</div>
-            <div class="legend-row"><div class="legend-dot" style="background:#99907c;border-radius:0;height:2px;width:14px;"></div>Static Route (dashed)</div>
+            <div class="legend-row"><div class="legend-dot" style="background:#f2ca50;"></div>Recommended Route (gold)</div>
+            <div class="legend-row"><div class="legend-dot" style="background:#99907c;border-radius:0;height:2px;width:14px;"></div>Alternative Routes (dashed)</div>
           </div>
         </div>
       </div>
@@ -282,9 +359,7 @@
 
 <script>
   // ---------------------------------------------------------------------------
-  // API endpoint — auto-detects environment:
-  //   Local dev  → http://127.0.0.1:8000  (uvicorn running locally)
-  //   Firebase   → http://YOUR_EC2_IP:8000  (replace with real EC2 public IP)
+  // API endpoint — auto-detects environment
   // ---------------------------------------------------------------------------
   const _onFirebase = window.location.hostname.includes('web.app') ||
                       window.location.hostname.includes('firebaseapp.com');
@@ -292,7 +367,7 @@
     ? 'https://43-204-232-243.sslip.io'
     : 'http://127.0.0.1:8000';
 
-  // Map init — Bangalore center, matches road coords
+  // ── Map init ──────────────────────────────────────────────────────────────
   const map = L.map('map', { zoomControl: false }).setView([12.97, 77.64], 12);
   L.control.zoom({ position: 'bottomright' }).addTo(map);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -304,12 +379,18 @@
       e.latlng.lat.toFixed(4) + '° N, ' + e.latlng.lng.toFixed(4) + '° E';
   });
 
+  // ── State ─────────────────────────────────────────────────────────────────
   let sensorLocations = [];
   let sensorMarkers = [];
-  let routeLine = null;
-  let staticRouteLine = null;
-  let routeControl = null;
-  let staticRouteControl = null;
+  let routeLayers = [];  // GeoJSON route layers drawn on map
+  let originMarker = null;
+  let destMarker = null;
+  let pickMode = null;   // 'origin' | 'destination' | null
+
+  // Selected coordinates
+  let originCoords = null;  // {lat, lng, label}
+  let destCoords = null;    // {lat, lng, label}
+  let selectedDayOffset = 0;
 
   function speedColor(kmh) {
     if (kmh > 80) return '#22c55e';
@@ -317,7 +398,7 @@
     return '#ef4444';
   }
 
-  // Expects bangalore_road_locations.csv alongside this file
+  // ── Load sensor locations ─────────────────────────────────────────────────
   async function loadSensorLocations() {
     const res = await fetch('bangalore_road_locations.csv');
     const text = await res.text();
@@ -328,41 +409,7 @@
     });
   }
 
-  function populateDropdowns() {
-    const sourceSel = document.getElementById('source');
-    const targetSel = document.getElementById('target');
-    sensorLocations.forEach(s => {
-      const opt1 = new Option('Sensor ' + s.index + ' — ' + s.sensor_id, s.index);
-      const opt2 = new Option('Sensor ' + s.index + ' — ' + s.sensor_id, s.index);
-      sourceSel.add(opt1);
-      targetSel.add(opt2);
-    });
-    // Default: ITPL Main Road -> Sony World Junction (index 13 -> 3), confirmed 8% improvement
-    sourceSel.value = "13";
-    targetSel.value = "3";
-    updateCardNodes();
-  }
-
-  function updateCardNodes() {
-    const sv = document.getElementById('source').value;
-    const tv = document.getElementById('target').value;
-    const src = sensorLocations.find(s => s.index === +sv);
-    const tgt = sensorLocations.find(s => s.index === +tv);
-    document.getElementById('nodeOrigin').textContent = src ? 'NODE ' + src.index + ' — ' + src.sensor_id : 'Select source';
-    document.getElementById('nodeDest').textContent = tgt ? 'NODE ' + tgt.index + ' — ' + tgt.sensor_id : 'Select target';
-  }
-
-  document.getElementById('source').addEventListener('change', function() {
-    // Clear geo-snap info when user manually picks a road
-    var info = document.getElementById('geo-snap-info');
-    info.style.display = 'none';
-    info.className = '';
-    updateCardNodes();
-  });
-  document.getElementById('target').addEventListener('change', updateCardNodes);
-
-  // ── Geolocation snap ─────────────────────────────────────────────────────────
-  // Haversine distance in km between two lat/lng points
+  // ── Haversine (for GPS snap) ──────────────────────────────────────────────
   function haversineKm(lat1, lon1, lat2, lon2) {
     var R = 6371;
     var dLat = (lat2 - lat1) * Math.PI / 180;
@@ -373,21 +420,136 @@
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
-  function snapToNearestSensor(userLat, userLng) {
-    var best = null, bestDist = Infinity;
-    sensorLocations.forEach(function(s) {
-      var d = haversineKm(userLat, userLng, s.latitude, s.longitude);
-      if (d < bestDist) { bestDist = d; best = s; }
+  // ── Nominatim autocomplete (debounced, rate-limited) ──────────────────────
+  let _lastNominatimCall = 0;
+  const NOMINATIM_DEBOUNCE = 400;
+  const NOMINATIM_MIN_INTERVAL = 1000;  // max 1 req/sec per Nominatim policy
+  const BANGALORE_VIEWBOX = '77.40,12.80,77.85,13.20';
+
+  function setupAutocomplete(inputId, suggestionsId, onSelect) {
+    const input = document.getElementById(inputId);
+    const suggestionsEl = document.getElementById(suggestionsId);
+    let debounceTimer = null;
+
+    input.addEventListener('input', function() {
+      clearTimeout(debounceTimer);
+      const query = input.value.trim();
+      if (query.length < 3) {
+        suggestionsEl.classList.remove('show');
+        suggestionsEl.innerHTML = '';
+        return;
+      }
+      debounceTimer = setTimeout(function() {
+        fetchNominatim(query, suggestionsEl, onSelect);
+      }, NOMINATIM_DEBOUNCE);
     });
-    return best ? { sensor: best, distKm: bestDist } : null;
+
+    input.addEventListener('blur', function() {
+      // Delay to allow click on suggestion
+      setTimeout(function() { suggestionsEl.classList.remove('show'); }, 200);
+    });
+
+    input.addEventListener('focus', function() {
+      if (suggestionsEl.children.length > 0) suggestionsEl.classList.add('show');
+    });
   }
 
+  async function fetchNominatim(query, suggestionsEl, onSelect) {
+    const now = Date.now();
+    const timeSinceLast = now - _lastNominatimCall;
+    if (timeSinceLast < NOMINATIM_MIN_INTERVAL) {
+      await new Promise(r => setTimeout(r, NOMINATIM_MIN_INTERVAL - timeSinceLast));
+    }
+    _lastNominatimCall = Date.now();
+
+    try {
+      const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({
+        q: query,
+        format: 'json',
+        countrycodes: 'in',
+        viewbox: BANGALORE_VIEWBOX,
+        bounded: '1',
+        limit: '5',
+        addressdetails: '1',
+      });
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'StreetFlowLive/1.0 (traffic-prediction-app)',
+          'Referer': window.location.origin || 'https://traff2ic-detector.web.app',
+        }
+      });
+      if (!res.ok) return;
+      const results = await res.json();
+
+      suggestionsEl.innerHTML = '';
+      if (results.length === 0) {
+        suggestionsEl.classList.remove('show');
+        return;
+      }
+
+      results.forEach(function(place) {
+        const item = document.createElement('div');
+        item.className = 'autocomplete-item';
+        item.textContent = place.display_name.substring(0, 80);
+        item.addEventListener('mousedown', function(e) {
+          e.preventDefault();  // prevent blur
+          onSelect({
+            lat: parseFloat(place.lat),
+            lng: parseFloat(place.lon),
+            label: place.display_name.split(',')[0],
+          });
+          suggestionsEl.classList.remove('show');
+        });
+        suggestionsEl.appendChild(item);
+      });
+      suggestionsEl.classList.add('show');
+    } catch(e) {
+      console.warn('Nominatim error:', e);
+    }
+  }
+
+  // ── Set origin/destination ────────────────────────────────────────────────
+  function setOrigin(coords) {
+    originCoords = coords;
+    document.getElementById('originInput').value = coords.label || `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`;
+    document.getElementById('nodeOrigin').textContent = coords.label || `${coords.lat.toFixed(4)}°, ${coords.lng.toFixed(4)}°`;
+
+    if (originMarker) map.removeLayer(originMarker);
+    originMarker = L.marker([coords.lat, coords.lng], {
+      icon: L.divIcon({
+        className: '',
+        html: '<div style="width:14px;height:14px;background:#22c55e;border:2px solid #0e0e0e;border-radius:50%;box-shadow:0 0 8px rgba(34,197,94,.5);"></div>',
+        iconSize: [14, 14], iconAnchor: [7, 7],
+      })
+    }).addTo(map).bindPopup('<span style="color:#22c55e;">ORIGIN</span><br>' + (coords.label || ''));
+  }
+
+  function setDestination(coords) {
+    destCoords = coords;
+    document.getElementById('destInput').value = coords.label || `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`;
+    document.getElementById('nodeDest').textContent = coords.label || `${coords.lat.toFixed(4)}°, ${coords.lng.toFixed(4)}°`;
+
+    if (destMarker) map.removeLayer(destMarker);
+    destMarker = L.marker([coords.lat, coords.lng], {
+      icon: L.divIcon({
+        className: '',
+        html: '<div style="width:14px;height:14px;background:#ef4444;border:2px solid #0e0e0e;border-radius:50%;box-shadow:0 0 8px rgba(239,68,68,.5);"></div>',
+        iconSize: [14, 14], iconAnchor: [7, 7],
+      })
+    }).addTo(map).bindPopup('<span style="color:#ef4444;">DESTINATION</span><br>' + (coords.label || ''));
+  }
+
+  // Setup autocomplete for both inputs
+  setupAutocomplete('originInput', 'originSuggestions', setOrigin);
+  setupAutocomplete('destInput', 'destSuggestions', setDestination);
+
+  // ── "Use my location" ─────────────────────────────────────────────────────
   document.getElementById('geoBtn').addEventListener('click', function() {
     var btn  = document.getElementById('geoBtn');
     var info = document.getElementById('geo-snap-info');
 
     if (!navigator.geolocation) {
-      info.textContent = '⚠ Geolocation is not supported by this browser. Please select a road manually.';
+      info.textContent = '⚠ Geolocation is not supported by this browser.';
       info.className = 'error';
       info.style.display = 'block';
       return;
@@ -401,44 +563,30 @@
     navigator.geolocation.getCurrentPosition(
       function(pos) {
         btn.disabled = false;
-        var userLat = pos.coords.latitude;
-        var userLng = pos.coords.longitude;
+        var lat = pos.coords.latitude;
+        var lng = pos.coords.longitude;
 
-        if (!sensorLocations.length) {
-          info.textContent = 'Sensor data not yet loaded — try again in a moment.';
+        // Check if within Bangalore bounding box
+        if (lat < 12.80 || lat > 13.20 || lng < 77.40 || lng > 77.85) {
+          info.textContent = '⚠ Your location is outside the Bangalore area. The model only covers Bangalore.';
           info.className = 'error';
+          info.style.display = 'block';
           return;
         }
 
-        var result = snapToNearestSensor(userLat, userLng);
-        if (!result) { info.textContent = 'Could not match to any known road.'; info.className = 'error'; return; }
-
-        // Select matched sensor in dropdown
-        document.getElementById('source').value = String(result.sensor.index);
-        updateCardNodes();
-
+        setOrigin({ lat: lat, lng: lng, label: 'My Location (' + lat.toFixed(4) + ', ' + lng.toFixed(4) + ')' });
+        info.textContent = '📍 Using your GPS location as origin.';
         info.className = '';
-        info.textContent =
-          '📍 Using your location → nearest road:\n' +
-          result.sensor.sensor_id + ' (' + result.distKm.toFixed(1) + ' km away)\n' +
-          'Note: routing uses this road as the start point, not your exact GPS position.';
         info.style.display = 'block';
       },
       function(err) {
         btn.disabled = false;
         var msg;
         switch (err.code) {
-          case err.PERMISSION_DENIED:
-            msg = 'Location access denied — please select a road manually from the dropdown.';
-            break;
-          case err.POSITION_UNAVAILABLE:
-            msg = 'Location unavailable — GPS signal could not be obtained.';
-            break;
-          case err.TIMEOUT:
-            msg = 'Location request timed out — please try again or select manually.';
-            break;
-          default:
-            msg = 'Location error: ' + err.message;
+          case err.PERMISSION_DENIED: msg = 'Location access denied.'; break;
+          case err.POSITION_UNAVAILABLE: msg = 'Location unavailable.'; break;
+          case err.TIMEOUT: msg = 'Location request timed out.'; break;
+          default: msg = 'Location error: ' + err.message;
         }
         info.textContent = '⚠ ' + msg;
         info.className = 'error';
@@ -447,8 +595,68 @@
       { timeout: 10000, maximumAge: 60000 }
     );
   });
-  // ─────────────────────────────────────────────────────────────────────────────
 
+  // ── "Pick on map" ─────────────────────────────────────────────────────────
+  document.getElementById('pickOriginBtn').addEventListener('click', function() {
+    pickMode = 'origin';
+    map.getContainer().style.cursor = 'crosshair';
+    setResult('Click on the map to set your ORIGIN point.', '');
+  });
+  document.getElementById('pickDestBtn').addEventListener('click', function() {
+    pickMode = 'destination';
+    map.getContainer().style.cursor = 'crosshair';
+    setResult('Click on the map to set your DESTINATION point.', '');
+  });
+
+  map.on('click', function(e) {
+    if (!pickMode) return;
+    var lat = e.latlng.lat, lng = e.latlng.lng;
+    // Validate bounding box
+    if (lat < 12.80 || lat > 13.20 || lng < 77.40 || lng > 77.85) {
+      setResult('⚠ Clicked point is outside the Bangalore area.', 'error');
+      return;
+    }
+    var label = lat.toFixed(5) + ', ' + lng.toFixed(5);
+    if (pickMode === 'origin') {
+      setOrigin({ lat: lat, lng: lng, label: 'Map Pin (' + label + ')' });
+    } else {
+      setDestination({ lat: lat, lng: lng, label: 'Map Pin (' + label + ')' });
+    }
+    pickMode = null;
+    map.getContainer().style.cursor = '';
+    setResult('Point set. Enter both origin & destination, then Compute Route.', '');
+  });
+
+  // ── Swap button ───────────────────────────────────────────────────────────
+  document.getElementById('swapBtn').addEventListener('click', function() {
+    var tmpCoords = originCoords;
+    var tmpLabel = document.getElementById('originInput').value;
+    if (destCoords) setOrigin(destCoords);
+    else {
+      originCoords = null;
+      document.getElementById('originInput').value = '';
+      document.getElementById('nodeOrigin').textContent = 'Enter origin';
+      if (originMarker) { map.removeLayer(originMarker); originMarker = null; }
+    }
+    if (tmpCoords) setDestination(tmpCoords);
+    else {
+      destCoords = null;
+      document.getElementById('destInput').value = '';
+      document.getElementById('nodeDest').textContent = 'Enter destination';
+      if (destMarker) { map.removeLayer(destMarker); destMarker = null; }
+    }
+  });
+
+  // ── Day selector ──────────────────────────────────────────────────────────
+  document.querySelectorAll('.day-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.day-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      selectedDayOffset = parseInt(btn.dataset.offset);
+    });
+  });
+
+  // ── Predicted speed sensor overlay ────────────────────────────────────────
   async function plotPredictedSpeeds() {
     const res = await fetch(API_BASE + '/predict', { method: 'POST' });
     if (!res.ok) { setResult('Error loading predictions: ' + res.status, 'error'); return; }
@@ -472,139 +680,145 @@
     });
   }
 
-  // Auto-refresh sensor speeds every 30 s
   let _refreshTimer = null;
   function startAutoRefresh() {
     if (_refreshTimer) clearInterval(_refreshTimer);
-    _refreshTimer = setInterval(function() {
-      plotPredictedSpeeds();
-    }, 30000);
+    _refreshTimer = setInterval(function() { plotPredictedSpeeds(); }, 30000);
   }
 
+  // ── UI helpers ────────────────────────────────────────────────────────────
   function setResult(text, state) {
     const el = document.getElementById('result');
     el.textContent = text;
     el.className = state || '';
   }
 
-  async function findRoute() {
-    const source = +document.getElementById('source').value;
-    const target = +document.getElementById('target').value;
-    const btn = document.getElementById('findRouteBtn');
-    if (source === target) { setResult('Source and target must differ.', 'error'); return; }
-    btn.disabled = true;
-    setResult('Computing optimal route…', '');
+  function clearRoutes() {
+    routeLayers.forEach(function(l) { map.removeLayer(l); });
+    routeLayers = [];
+  }
+
+  function showLoading(show) {
+    document.getElementById('loadingSpinner').className = show ? 'loading-spinner show' : 'loading-spinner';
+    document.getElementById('findRouteBtn').disabled = show;
+    document.getElementById('routeBtn').disabled = show;
+  }
+
+  // ── Find custom route ─────────────────────────────────────────────────────
+  async function findCustomRoute() {
+    if (!originCoords || !destCoords) {
+      setResult('Please set both origin and destination first.', 'error');
+      return;
+    }
+
+    showLoading(true);
+    setResult('', '');
     document.getElementById('etaBadge').textContent = '…';
+    document.getElementById('coverageWarning').classList.remove('show');
+
     try {
-      const res = await fetch(API_BASE + '/route', {
+      const res = await fetch(API_BASE + '/route/custom', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source: source, target: target }),
+        body: JSON.stringify({
+          origin: { lat: originCoords.lat, lng: originCoords.lng, label: originCoords.label },
+          destination: { lat: destCoords.lat, lng: destCoords.lng, label: destCoords.label },
+          day_offset: selectedDayOffset,
+        }),
       });
+
       if (!res.ok) {
-        const err = await res.json();
-        setResult('Error: ' + (err.detail || res.status), 'error');
+        const err = await res.json().catch(function() { return { detail: res.statusText }; });
+        setResult('Error ' + res.status + ': ' + (err.detail || JSON.stringify(err)), 'error');
+        document.getElementById('etaBadge').textContent = 'ERR';
         return;
       }
+
       const data = await res.json();
-      if (routeLine)          { map.removeLayer(routeLine); routeLine = null; }
-      if (staticRouteLine)    { map.removeLayer(staticRouteLine); staticRouteLine = null; }
-      if (routeControl)       { try { map.removeControl(routeControl); } catch(e){} routeControl = null; }
-      if (staticRouteControl) { try { map.removeControl(staticRouteControl); } catch(e){} staticRouteControl = null; }
+      clearRoutes();
 
-      const idToLatLng = function(id) {
-        const s = sensorLocations.find(function(s){ return s.index === id; });
-        return s ? [s.latitude, s.longitude] : null;
-      };
-      const predCoords   = data.predicted_route.map(idToLatLng).filter(Boolean);
-      const staticCoords = data.static_route.map(idToLatLng).filter(Boolean);
-
-      // NOTE: OSRM's public demo server (router.project-osrm.org) has usage limits
-      // and is intended for demo/testing purposes only. For production deployment at scale,
-      // replace with a paid routing service (e.g. Mapbox, Google Directions) or a self-hosted OSRM instance.
-
-      if (window.L && L.Routing && L.Routing.control && predCoords.length >= 2 && staticCoords.length >= 2) {
-        // 1. Predicted Route (Gold, solid line following actual roads via OSRM)
-        const predWaypoints = predCoords.map(c => L.latLng(c[0], c[1]));
-        routeControl = L.Routing.control({
-          waypoints: predWaypoints,
-          router: L.Routing.osrmv1({
-            serviceUrl: 'https://router.project-osrm.org/route/v1'
-          }),
-          lineOptions: {
-            styles: [{ color: '#f2ca50', opacity: 0.9, weight: 5 }],
-            addWaypoints: false
-          },
-          addWaypoints: false,
-          draggableWaypoints: false,
-          fitSelectedRoutes: true,
-          show: false,
-          createMarker: function() { return null; }
-        }).addTo(map);
-
-        routeControl.on('routesfound', function(e) {
-          if (e.routes && e.routes.length > 0) {
-            map.fitBounds(L.latLngBounds(e.routes[0].coordinates), { padding: [40, 40] });
-          }
-        });
-
-        // 2. Static Route (Gray, dashed line following actual roads via OSRM)
-        const staticWaypoints = staticCoords.map(c => L.latLng(c[0], c[1]));
-        staticRouteControl = L.Routing.control({
-          waypoints: staticWaypoints,
-          router: L.Routing.osrmv1({
-            serviceUrl: 'https://router.project-osrm.org/route/v1'
-          }),
-          lineOptions: {
-            styles: [{ color: '#99907c', opacity: 0.7, weight: 3, dashArray: '6,6' }],
-            addWaypoints: false
-          },
-          addWaypoints: false,
-          draggableWaypoints: false,
-          fitSelectedRoutes: false,
-          show: false,
-          createMarker: function() { return null; }
-        }).addTo(map);
-      } else {
-        // Fallback straight-line polyline if routing engine is unavailable
-        routeLine       = L.polyline(predCoords,   { color: '#f2ca50', weight: 4, opacity: 0.9 }).addTo(map);
-        staticRouteLine = L.polyline(staticCoords, { color: '#99907c', weight: 2.5, dashArray: '6,6', opacity: 0.6 }).addTo(map);
-        map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+      // Coverage warning banner
+      if (data.coverage_warning) {
+        document.getElementById('coverageWarning').classList.add('show');
       }
-      const imp = data.improvement_pct.toFixed(1);
-      document.getElementById('efficiencyLabel').innerHTML = 'Improvement: <strong>' + imp + '%</strong>';
-      document.getElementById('etaBadge').textContent = '+' + imp + '%';
-      document.getElementById('etaBeta').textContent = 'Fallback';
-      document.getElementById('betaStatus').textContent = data.static_route.length + ' hops · static graph';
-      document.getElementById('standardCard').style.opacity = '1';
-      setResult(
-        'PREDICTED ROUTE (gold):\n' + data.predicted_route.join(' \u2192 ') + '\n\n' +
-        'STATIC ROUTE (dashed):\n' + data.static_route.join(' \u2192 ') + '\n\n' +
-        'IMPROVEMENT: ' + imp + '%',
-        'success'
-      );
+
+      // Draw routes on map
+      var bounds = L.latLngBounds();
+      data.routes.forEach(function(route) {
+        // Convert GeoJSON [lng, lat] to Leaflet [lat, lng]
+        var latlngs = route.geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
+        var style = route.recommended
+          ? { color: '#f2ca50', weight: 5, opacity: 0.9, dashArray: null }
+          : { color: '#99907c', weight: 3, opacity: 0.6, dashArray: '8,6' };
+
+        var polyline = L.polyline(latlngs, style).addTo(map);
+        polyline.bindPopup(
+          '<strong style="color:' + (route.recommended ? '#f2ca50' : '#99907c') + ';">' +
+          (route.recommended ? '★ RECOMMENDED' : 'ALTERNATIVE') + '</strong><br/>' +
+          'Distance: ' + route.distance_km + ' km<br/>' +
+          'ETA (predicted): ' + route.eta_pred_min.toFixed(1) + ' min<br/>' +
+          'Avg speed: ' + route.avg_speed_kmh.toFixed(1) + ' km/h'
+        );
+        routeLayers.push(polyline);
+        bounds.extend(polyline.getBounds());
+      });
+
+      if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
+
+      // Update cards
+      var rec = data.routes.find(function(r) { return r.recommended; });
+      if (rec) {
+        document.getElementById('etaBadge').textContent = rec.eta_pred_min.toFixed(1) + ' min';
+        document.getElementById('efficiencyLabel').innerHTML =
+          'Time saved: <strong>' + data.time_saved_min.toFixed(1) + ' min (' + data.improvement_pct.toFixed(1) + '%)</strong>';
+      }
+
+      var alts = data.routes.filter(function(r) { return !r.recommended; });
+      if (alts.length > 0) {
+        document.getElementById('etaBeta').textContent = alts.map(function(a) { return a.eta_pred_min.toFixed(1) + ' min'; }).join(' / ');
+        document.getElementById('betaStatus').textContent = alts.length + ' alternative' + (alts.length > 1 ? 's' : '') + ' · ' + alts.map(function(a) { return a.distance_km + ' km'; }).join(', ');
+        document.getElementById('standardCard').style.opacity = '1';
+      } else {
+        document.getElementById('etaBeta').textContent = '—';
+        document.getElementById('betaStatus').textContent = 'No alternatives';
+      }
+
+      // Result text
+      var resultText = '';
+      data.routes.forEach(function(r) {
+        resultText += (r.recommended ? '★ RECOMMENDED' : '  ALTERNATIVE') + '\n';
+        resultText += '  Distance: ' + r.distance_km + ' km\n';
+        resultText += '  ETA (predicted): ' + r.eta_pred_min.toFixed(1) + ' min\n';
+        resultText += '  ETA (static):    ' + r.eta_static_min.toFixed(1) + ' min\n';
+        resultText += '  Avg speed: ' + r.avg_speed_kmh.toFixed(1) + ' km/h\n\n';
+      });
+      if (data.time_saved_min > 0) {
+        resultText += 'TIME SAVED: ' + data.time_saved_min.toFixed(1) + ' min (' + data.improvement_pct.toFixed(1) + '%)';
+      }
+      setResult(resultText, 'success');
+
     } catch (e) {
       setResult('Request failed: ' + e.message + '\nIs the API running at ' + API_BASE + '?', 'error');
       document.getElementById('etaBadge').textContent = 'ERR';
     } finally {
-      btn.disabled = false;
+      showLoading(false);
     }
   }
 
-  document.getElementById('findRouteBtn').addEventListener('click', findRoute);
-  document.getElementById('routeBtn').addEventListener('click', findRoute);
+  document.getElementById('findRouteBtn').addEventListener('click', findCustomRoute);
+  document.getElementById('routeBtn').addEventListener('click', findCustomRoute);
 
-  // Only prevent default on the Command stub (no page behind it yet)
+  // Only prevent default on the Command stub
   var cmdLink = document.getElementById('sn-command');
   if (cmdLink) cmdLink.addEventListener('click', function(e){ e.preventDefault(); });
 
+  // ── Init ──────────────────────────────────────────────────────────────────
   (async function init() {
     try {
       await loadSensorLocations();
-      populateDropdowns();
       await plotPredictedSpeeds();
       startAutoRefresh();
-      setResult('Predictions loaded. Select source & target, then click Compute Route.', '');
+      setResult('Predictions loaded. Enter origin & destination, then click Compute Route.', '');
     } catch(err) {
       setResult('Init failed: ' + err.message + '\nEnsure API is running and CSV is accessible.', 'error');
     }

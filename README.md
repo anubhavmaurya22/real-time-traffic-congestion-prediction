@@ -1,96 +1,219 @@
 # Real-Time Traffic Congestion Prediction & Route Optimization
 
-Day 1 output: verified environment, project scaffold, and literature skim.
-See `../traffic_project_roadmap.md` for the full 6-week plan.
+**StreetFlow Live** — AI-powered traffic forecasting and dynamic route
+optimization for Bangalore, using an A3T-GCN (Attention Temporal Graph
+Convolutional Network) on a 16-road sensor network.
 
-## Setup status (verified 2026-07-15)
+## Architecture
 
-Tested in an isolated sandbox on Python 3.12. Results, so you know exactly
-what to expect when you set this up yourself:
+```
+frontend/         Leaflet dashboard (Firebase Hosting)
+api/              FastAPI backend (AWS EC2 + nginx)
+model/            A3T-GCN model, speed estimator, evaluation
+data/             Bangalore dataset, routing, custom routing
+tests/            pytest suite
+```
 
-**Installed and imported cleanly:** `torch` 2.13.0, `torch-geometric` 2.8.0,
-`fastapi`, `uvicorn`, `networkx`, `pandas`, `numpy`.
-
-**One real snag, with a fix:** `torch-geometric-temporal` declares
-`torch-scatter` and `torch-sparse` as hard dependencies. Installing them
-from PyPI directly tries to compile C++/CUDA extensions from source, which
-can hang for a very long time. The standard fix — and the one to actually
-use — is installing them as prebuilt wheels instead:
+## Setup
 
 ```bash
 pip install torch
-python -c "import torch; print(torch.__version__)"   # note the version printed
+python -c "import torch; print(torch.__version__)"   # note the version
 
-pip install torch-scatter torch-sparse -f https://data.pyg.org/whl/torch-<VERSION>.html
-# e.g. -f https://data.pyg.org/whl/torch-2.13.0+cpu.html
+pip install torch-scatter torch-sparse \
+  -f https://data.pyg.org/whl/torch-<VERSION>.html
 
 pip install -r requirements.txt
 ```
 
-Worth knowing: tracing the actual import chain, `torch-scatter`/`torch-sparse`
-are only used by one layer this project doesn't need (`EvolveGCN-O`) — the
-`METRLADatasetLoader` and `A3TGCN`, which is what we're actually using, don't
-touch them. They're still required for the package to import at all though,
-since `torch_geometric_temporal`'s `__init__.py` eagerly loads every layer.
-So the wheel-index install above is a one-time cost, not something you'll
-fight with repeatedly.
+## Training
 
-**Not verified — sandbox network restrictions, not a real problem:**
-`METRLADatasetLoader` downloads the raw data from `anl.app.box.com`, which
-this build sandbox can't reach. That's a restriction specific to this
-sandbox, not a real access issue — it'll download normally on your machine
-or on Colab. `data.pyg.org` (the wheel index above) is similarly unreachable
-from here but a completely normal host. Everything about the loader's logic
-and the model's API was confirmed correct up to that download step —
-`data/verify_setup.py` is ready to run as-is once you have normal internet
-access.
+```bash
+cd data
+python train_bangalore.py
+```
 
-## Literature skim (Day 1)
+This trains the A3T-GCN model on the Bangalore traffic dataset (16 roads,
+7-day input → 3-day forecast) and saves `bangalore_best_model.pt`.
 
-Three papers, in the order it's most useful to read them — DCRNN because
-it's the standard benchmark result you'll compare your numbers against,
-T-GCN and A3T-GCN because they're the direct architectural lineage of the
-`A3TGCN` layer this project uses.
+Hyperparameters are in [`model/config.yaml`](model/config.yaml).
 
-**DCRNN** — Li, Yu, Shahabi, Liu. *Diffusion Convolutional Recurrent Neural
-Network: Data-Driven Traffic Forecasting.* ICLR 2018.
-Treats traffic flow as a diffusion process on a directed graph, using
-random walks in both directions along the graph to capture how congestion
-influences upstream and downstream roads differently. Spatial dependence is
-captured through this diffusion convolution, temporal dependence through an
-encoder-decoder recurrent structure. It's the paper that established METR-LA
-and PeMS-BAY as standard benchmarks — this is why your results get compared
-against it.
+## Evaluation
 
-**T-GCN** — Zhao, Song, Zhang, Liu, Wang, Lin, Deng, Li. *T-GCN: A Temporal
-Graph Convolutional Network for Traffic Prediction.* IEEE Transactions on
-Intelligent Transportation Systems, 21(9), 2019/2020.
-Simpler combination than DCRNN: a standard GCN handles spatial structure,
-feeding into a GRU for the temporal side. Less exotic than DCRNN's diffusion
-convolution, but a clean, well-cited baseline architecture and the direct
-ancestor of the layer you'll actually train.
+```bash
+python model/evaluate_bangalore.py
+```
 
-**A3T-GCN** — Zhu, Song, Zhao, Li. *A3T-GCN: Attention Temporal Graph
-Convolutional Network for Traffic Forecasting.* arXiv:2006.11583, 2020.
-Adds an attention mechanism on top of T-GCN's GCN+GRU structure, letting the
-model weigh different historical time steps unequally instead of treating
-recent and distant history the same way. This is the exact layer
-(`torch_geometric_temporal.nn.recurrent.A3TGCN`) this project's model is
-built on — worth reading closely, since you'll need to explain this
-architecture at viva.
+Produces:
+- `model/results.json` — full metrics (MAE, RMSE, MAPE per horizon, per
+  method, per road, spatial estimator LOO CV)
+- `model/error_vs_horizon.png` — forecast error across 3-day horizon
+- `model/predicted_vs_observed.png` — best and worst road time series
+- `model/training_curve.png` — if training log CSV exists
+
+**Evaluation compares:**
+| Method | What it does |
+|---|---|
+| A3T-GCN | Trained model predictions |
+| Persistence | Repeat the last observed day |
+| Historical Average | Training-set mean per road per horizon |
+
+**Spatial estimator** (leave-one-road-out CV):
+| Method | What it does |
+|---|---|
+| IDW | Inverse-distance weighted average of k nearest road speeds |
+| Learned (GBR) | Gradient-boosting regressor on (lat, lng, distances, speeds) |
+| Global Mean | City-wide average speed baseline |
+
+## Running the API
+
+```bash
+cd api
+uvicorn api_bangalore:app --reload
+# Visit http://127.0.0.1:8000/docs
+```
+
+### Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/` | Health check |
+| `POST` | `/predict` | Predicted speeds for all 16 roads |
+| `POST` | `/route` | Original integer-based routing (road IDs 0–15) |
+| `POST` | `/route/custom` | **New** — arbitrary origin/destination routing |
+| `POST` | `/admin/reload` | Hot-reload model checkpoint (token-protected) |
+| `POST` | `/api/users/sync` | Firebase user sync |
+| `GET` | `/api/users/{uid}` | Get user profile |
+
+### POST /route/custom — Example
+
+**Request:**
+```json
+{
+  "origin": {"lat": 12.9716, "lng": 77.5946, "label": "Indiranagar Metro"},
+  "destination": {"lat": 12.8440, "lng": 77.6610, "label": "Electronic City"},
+  "day_offset": 0
+}
+```
+
+**Response:**
+```json
+{
+  "routes": [
+    {
+      "id": "route_0",
+      "geometry": {"type": "LineString", "coordinates": [[77.59, 12.97], ...]},
+      "distance_km": 18.4,
+      "eta_pred_min": 32.5,
+      "eta_static_min": 35.1,
+      "avg_speed_kmh": 33.9,
+      "recommended": true
+    },
+    {
+      "id": "route_1",
+      "geometry": {"type": "LineString", "coordinates": [...]},
+      "distance_km": 20.1,
+      "eta_pred_min": 36.8,
+      "eta_static_min": 38.2,
+      "avg_speed_kmh": 32.8,
+      "recommended": false
+    }
+  ],
+  "time_saved_min": 2.6,
+  "improvement_pct": 7.4,
+  "coverage_warning": false
+}
+```
+
+**Validation:**
+- Coordinates must be inside the Bangalore bounding box (lat 12.80–13.20, lng 77.40–77.85)
+- Origin and destination must be ≥ 200 m apart
+- `day_offset` must be 0 (today), 1 (tomorrow), or 2 (day after)
+
+**Error responses:**
+- `400` — invalid coordinates (outside Bangalore) or same-point
+- `502` — OSRM routing server unreachable
+- `429` — rate limit exceeded (10 req/min per IP)
+
+### POST /admin/reload
+
+Hot-reload the model checkpoint without restarting the server. Set the
+`ADMIN_RELOAD_TOKEN` environment variable and pass it in the request body:
+
+```bash
+curl -X POST http://localhost:8000/admin/reload \
+  -H "Content-Type: application/json" \
+  -d '{"token": "your-secret-token"}'
+```
+
+## Running Tests
+
+```bash
+pytest tests/ -v
+```
+
+Tests cover:
+- Speed estimator: near/far from roads, coverage warnings, LOO CV metrics
+- Bounding-box validation and same-point rejection
+- Route scoring with mocked OSRM responses
+- API error handling (400, 502)
+- Model smoke test: forward pass shape (16, 3), checkpoint loading
+
+## Frontend
+
+The dashboard at `frontend/dashboard.html` provides:
+- **Free-text search** — type any place in Bangalore (powered by Nominatim
+  geocoding, debounced, rate-limited per their policy)
+- **"Use my location"** — GPS origin with bounding-box validation
+- **"Pick on map"** — click to set origin or destination
+- **Swap button** — exchange origin and destination
+- **Day selector** — today, tomorrow, day after (maps to model's 3-day horizon)
+- **Route display** — recommended route in solid gold, alternatives in dashed grey
+- **ETA and time-saved** display with coverage warning when applicable
+- Sensor overlay with speed color coding (auto-refreshes every 30 s)
+
+## Limitations
+
+- **Daily granularity** — the model forecasts daily average speeds, not
+  5-minute or hourly. ETAs are approximate day-level estimates.
+- **16 approximated road coordinates** — 14 of 16 use parent-area centroids,
+  not exact junction positions. The spatial speed estimator interpolates
+  between these, which adds uncertainty.
+- **OSRM public server** — the demo uses OSRM's public routing service, which
+  has usage limits and is not suitable for production traffic. For deployment,
+  use a self-hosted OSRM instance or a paid service (Mapbox, Google).
+- **No published benchmark** — this is a new baseline on this dataset; results
+  are not comparable to published traffic forecasting numbers on METR-LA/PeMS.
 
 ## Project structure
 
 ```
-data/       loading, preprocessing, graph construction
-model/      A3TGCN model class, training loop, evaluation
-api/        FastAPI backend (/predict, /route)
-frontend/   Leaflet.js dashboard
-report/     synopsis, report drafts, slides
+data/
+  bangalore_data.py          Dataset pipeline (CSV → temporal signal)
+  bangalore_road_locations.csv  16 road coordinates
+  routing_bangalore.py       Original integer-based routing (networkx)
+  custom_routing.py          NEW: OSRM client + route scoring
+  train_bangalore.py         Training script
+
+model/
+  model.py                   A3T-GCN model (TrafficForecastModel)
+  config.yaml                NEW: centralized hyperparameters
+  speed_estimator.py         NEW: spatial speed estimation (IDW/GBR)
+  evaluate_bangalore.py      NEW: full evaluation + plots
+  results.json               Generated by evaluation script
+  *.png                      Generated plots
+
+api/
+  api_bangalore.py           FastAPI backend (all endpoints)
+  db_sync.py                 Firebase user sync
+  Dockerfile                 Container build
+
+frontend/
+  dashboard.html             Main dashboard (Leaflet + routing UI)
+  api-config.js              API base URL config
+  firebase-init.js           Firebase Auth init
+  theme.css                  Shared design tokens
+
+tests/
+  test_streetflow.py         pytest suite
 ```
-
-## Next: Day 2
-
-Run `data/verify_setup.py` on a machine with normal internet access, then
-move to exploring the raw data — shapes, missing-value pattern, sensor
-coverage — per the roadmap.

@@ -21,3 +21,9 @@ networkx==3.6.1
 pydantic==2.11.5
 torch-geometric==2.8.0
 torch-geometric-temporal==0.56.2
+httpx>=0.27
+pytest>=8.0
+scikit-learn>=1.5
+pyyaml>=6.0
+joblib>=1.4
+matplotlib>=3.9

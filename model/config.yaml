@@ -1,0 +1,35 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# StreetFlow Live — Model Configuration
+# All hyperparameters and training settings in one place.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Reproducibility
+seed: 42
+
+# Data pipeline
+data:
+  num_timesteps_in: 7      # 7-day input window
+  num_timesteps_out: 3     # 3-day forecast horizon
+  train_ratio: 0.7
+  val_ratio_of_remaining: 0.333   # 1/3 of remaining → val, 2/3 → test
+  feature_cols:
+    - "Average Speed"
+    - "Congestion Level"
+
+# Model architecture
+model:
+  hidden_dim: 32
+
+# Training
+training:
+  epochs: 50
+  learning_rate: 0.01
+  patience: 8              # early stopping patience (epochs)
+
+# Spatial speed estimator (IDW / learned)
+speed_estimator:
+  method: "idw"            # "idw" or "learned" — set after evaluation
+  idw_power: 2.0           # inverse-distance weighting exponent
+  k_nearest: 5             # number of nearest roads for learned estimator
+  min_speed_kmh: 5.0       # floor for predicted speed
+  coverage_radius_km: 5.0  # beyond this distance → use mean speed + warning
